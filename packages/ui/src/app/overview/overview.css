@@ -1,0 +1,59 @@
+.overview__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1f2533;
+  padding-bottom: 10px;
+}
+
+.confidence {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  border: 1px solid #1f2533;
+}
+
+.confidence--green {
+  background: rgba(102, 187, 106, 0.12);
+  color: #a5d6a7;
+}
+
+.confidence--amber {
+  background: rgba(255, 202, 40, 0.12);
+  color: #ffecb3;
+}
+
+.confidence--red {
+  background: rgba(239, 83, 80, 0.12);
+  color: #ffab91;
+}
+
+.section {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid #1f2533;
+}
+
+.section__title {
+  margin: 0 0 8px;
+}
+
+.listcard {
+  border: 1px solid #1f2533;
+  border-radius: 10px;
+  padding: 10px;
+  background: #0b0d12;
+}
+
+.listcard__title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.listcard ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+}
+

@@ -1,0 +1,110 @@
+.debugger {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.debugger__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #1f2533;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #0b0d12;
+}
+
+.debugger__body {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 12px;
+}
+
+.debugger__tree {
+  border: 1px solid #1f2533;
+  border-radius: 10px;
+  background: #0b0d12;
+  padding: 8px;
+  outline: none;
+  max-height: calc(100vh - 200px);
+  overflow: auto;
+}
+
+.debugger__detail {
+  border: 1px solid #1f2533;
+  border-radius: 10px;
+  background: #0b0d12;
+  padding: 12px;
+  min-height: 280px;
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tree-node:hover {
+  background: #151925;
+}
+
+.tree-node--selected {
+  background: #1b2436;
+  border: 1px solid #3a82f7;
+}
+
+.tree-node__toggle {
+  background: transparent;
+  border: none;
+  color: #9aa3b5;
+  cursor: pointer;
+  width: 16px;
+}
+
+.tree-node__spacer {
+  display: inline-block;
+  width: 16px;
+}
+
+.tree-node__icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.tree-node__icon--failure {
+  background: #ef5350;
+}
+
+.tree-node__icon--step {
+  background: #64b5f6;
+}
+
+.tree-node__icon--frame {
+  background: #ce93d8;
+}
+
+.tree-node__icon--attachment {
+  background: #80cbc4;
+}
+
+.tree-node__icon--console {
+  background: #ffd54f;
+}
+
+.tree-node__icon--network {
+  background: #ffab91;
+}
+
+.stacktrace {
+  background: #0f1320;
+  border-radius: 8px;
+  padding: 8px;
+  overflow: auto;
+  max-height: 200px;
+}
+

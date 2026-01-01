@@ -1,0 +1,93 @@
+.explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.explorer__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1f2533;
+  padding-bottom: 8px;
+}
+
+.explorer__body {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 12px;
+}
+
+.explorer__tree {
+  border: 1px solid #1f2533;
+  border-radius: 10px;
+  background: #0b0d12;
+  padding: 8px;
+  outline: none;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+.explorer__detail {
+  border: 1px solid #1f2533;
+  border-radius: 10px;
+  background: #0b0d12;
+  padding: 12px;
+  min-height: 320px;
+}
+
+.explorer__node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.explorer__node:hover {
+  background: #151925;
+}
+
+.explorer__node--selected {
+  background: #1b2436;
+  border: 1px solid #3a82f7;
+}
+
+.explorer__toggle {
+  background: transparent;
+  border: none;
+  color: #9aa3b5;
+  cursor: pointer;
+  width: 16px;
+}
+
+.explorer__spacer {
+  display: inline-block;
+  width: 16px;
+}
+
+.explorer__icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.explorer__icon--folder {
+  background: #64b5f6;
+}
+
+.explorer__icon--file {
+  background: #ce93d8;
+}
+
+.explorer__icon--test {
+  background: #66bb6a;
+}
+
+.explorer__status {
+  margin-left: auto;
+  font-size: 12px;
+  color: #9aa3b5;
+}
+
