@@ -38,3 +38,27 @@ import './visualSystem.css';
 
 // Export visual system utilities
 export * from './visualUtils.js';
+
+// =============================================================================
+// TYPOGRAPHY SYSTEM OVERVIEW - Phase 8.6
+// =============================================================================
+
+/**
+ * Orbis Typography System - Phase 8.6
+ *
+ * Prime Rule: Numbers speak louder than words
+ *
+ * 6 Typographic Layers:
+ * 1. 🟦 Verdict Authority - GO/HOLD decisions, scores
+ * 2. 🟨 Numeric Intelligence - Metrics, counts, durations
+ * 3. 🟩 Executive Explanation - Why decisions, summaries
+ * 4. 🟪 Analytical Labels - Section headers, small labels
+ * 5. ⬛ Evidence & Debug Text - Test names, file paths
+ * 6. 🔹 Meta / Ambient Text - Timestamps, environment
+ *
+ * Scale System: 14px base, ratio-based, no half pixels
+ * Numeric Authority: Tabular numbers, vertical alignment
+ * Line Rhythm: Heading (tight), Body (relaxed), Evidence (compact)
+ *
+ * Typography Trust Test: Screenshot → Grayscale → Still authoritative?
+ */

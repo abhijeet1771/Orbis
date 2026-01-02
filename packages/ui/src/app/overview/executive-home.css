@@ -48,6 +48,144 @@
 
 /* Legacy column-based styling removed - replaced by 5-zone spatial rhythm system */
 
+/* =============================================================================
+   TYPOGRAPHY APPLICATION - Phase 8.6
+   ============================================================================= */
+
+/* Executive Header - Zone 1 */
+.executive-home__wordmark {
+  font-family: var(--typography-label-font-family);
+  font-weight: var(--typography-label-font-weight);
+  font-size: var(--typography-label-font-size);
+  line-height: var(--typography-label-line-height);
+  letter-spacing: var(--typography-label-letter-spacing);
+  text-transform: var(--typography-label-text-transform);
+  color: var(--typography-label-color);
+}
+
+.executive-home__mode {
+  font-family: var(--typography-meta-font-family);
+  font-weight: var(--typography-meta-font-weight);
+  font-size: var(--typography-meta-font-size);
+  line-height: var(--typography-meta-line-height);
+  letter-spacing: var(--typography-meta-letter-spacing);
+  color: var(--typography-meta-color);
+}
+
+.executive-home__zone-1-center {
+  font-family: var(--typography-meta-font-family);
+  font-weight: var(--typography-meta-font-weight);
+  font-size: var(--typography-meta-font-size);
+  line-height: var(--typography-meta-line-height);
+  letter-spacing: var(--typography-meta-letter-spacing);
+  color: var(--typography-meta-color);
+}
+
+.executive-home__zone-1-right {
+  font-family: var(--typography-meta-font-family);
+  font-weight: var(--typography-meta-font-weight);
+  font-size: var(--typography-meta-font-size);
+  line-height: var(--typography-meta-line-height);
+  letter-spacing: var(--typography-meta-letter-spacing);
+  color: var(--typography-meta-color);
+}
+
+/* Primary Decision Band - Zone 2 */
+.executive-home__verdict-state {
+  font-family: var(--typography-verdict-font-family);
+  font-weight: var(--typography-verdict-font-weight);
+  font-size: var(--typography-verdict-font-size);
+  line-height: var(--typography-verdict-line-height);
+  letter-spacing: var(--typography-verdict-letter-spacing);
+  text-transform: var(--typography-verdict-text-transform);
+  color: var(--typography-verdict-color);
+}
+
+.executive-home__verdict-score {
+  font-family: var(--typography-numeric-font-family);
+  font-weight: var(--typography-numeric-font-weight);
+  font-size: var(--typography-numeric-font-size);
+  line-height: var(--typography-numeric-line-height);
+  letter-spacing: var(--typography-numeric-letter-spacing);
+  color: var(--typography-numeric-color);
+  font-variant-numeric: var(--typography-numeric-font-variant-numeric);
+  font-feature-settings: var(--typography-numeric-font-feature-settings);
+}
+
+.executive-home__verdict-justification {
+  font-family: var(--typography-explanation-font-family);
+  font-weight: var(--typography-explanation-font-weight);
+  font-size: var(--typography-explanation-font-size);
+  line-height: var(--typography-explanation-line-height);
+  letter-spacing: var(--typography-explanation-letter-spacing);
+  color: var(--typography-explanation-color);
+}
+
+/* Intelligence Triad - Zone 3 */
+.executive-home__intelligence-title {
+  font-family: var(--typography-label-font-family);
+  font-weight: var(--typography-label-font-weight);
+  font-size: var(--typography-label-font-size);
+  line-height: var(--typography-label-line-height);
+  letter-spacing: var(--typography-label-letter-spacing);
+  text-transform: var(--typography-label-text-transform);
+  color: var(--typography-label-color);
+}
+
+.executive-home__signal-count,
+.executive-home__ownership-count,
+.executive-home__trust-count {
+  font-family: var(--typography-numeric-font-family);
+  font-weight: var(--typography-numeric-font-weight);
+  font-size: var(--font-size-metrics);
+  line-height: var(--typography-numeric-line-height);
+  letter-spacing: var(--typography-numeric-letter-spacing);
+  color: var(--typography-numeric-color);
+  font-variant-numeric: var(--typography-numeric-font-variant-numeric);
+  font-feature-settings: var(--typography-numeric-font-feature-settings);
+}
+
+.executive-home__signal-label,
+.executive-home__ownership-label,
+.executive-home__trust-label {
+  font-family: var(--typography-meta-font-family);
+  font-weight: var(--typography-meta-font-weight);
+  font-size: var(--typography-meta-font-size);
+  line-height: var(--typography-meta-line-height);
+  letter-spacing: var(--typography-meta-letter-spacing);
+  color: var(--typography-meta-color);
+}
+
+/* Evidence Gateway - Zone 4 */
+.executive-home__evidence-title {
+  font-family: var(--typography-label-font-family);
+  font-weight: var(--typography-label-font-weight);
+  font-size: var(--typography-label-font-size);
+  line-height: var(--typography-label-line-height);
+  letter-spacing: var(--typography-label-letter-spacing);
+  text-transform: var(--typography-label-text-transform);
+  color: var(--typography-label-color);
+}
+
+.executive-home__evidence-summary {
+  font-family: var(--typography-evidence-font-family);
+  font-weight: var(--typography-evidence-font-weight);
+  font-size: var(--typography-evidence-font-size);
+  line-height: var(--typography-evidence-line-height);
+  letter-spacing: var(--typography-evidence-letter-spacing);
+  color: var(--typography-evidence-color);
+}
+
+/* Navigation Spine - Zone 5 */
+.executive-home__nav-item {
+  font-family: var(--typography-meta-font-family);
+  font-weight: var(--typography-meta-font-weight);
+  font-size: var(--typography-meta-font-size);
+  line-height: var(--typography-meta-line-height);
+  letter-spacing: var(--typography-meta-letter-spacing);
+  color: var(--typography-meta-color);
+}
+
 /* Center Column - Executive Core */
 
 /* Primary Verdict - HIGHEST PRIORITY VISUAL ELEMENT */

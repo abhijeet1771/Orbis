@@ -190,15 +190,122 @@
 }
 
 /* =============================================================================
-   TYPOGRAPHY AUTHORITY
+   TYPOGRAPHY AUTHORITY - Phase 8.6
    ============================================================================= */
 
 :root {
-  /* Primary typeface - authority and readability */
+  /* Typeface System - Authority and Trust */
   --font-family-primary: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-family-mono: 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
 
-  /* Font weights - limited palette */
+  /* Font Features - Numeric Dominance */
+  --font-feature-settings-numbers: 'tnum' 1, 'lnum' 1; /* Tabular + lining numbers */
+  --font-variant-numeric-tabular: tabular-nums;
+  --font-variant-numeric-lining: lining-nums;
+}
+
+/* =============================================================================
+   TYPOGRAPHIC LAYERS - 6-Role Hierarchy
+   ============================================================================= */
+
+/* 🟦 LAYER 1 — Verdict Authority (Decision Voice) */
+:root {
+  --typography-verdict-font-family: var(--font-family-primary);
+  --typography-verdict-font-weight: var(--font-weight-heavy);
+  --typography-verdict-font-size: var(--font-size-4xl);
+  --typography-verdict-line-height: var(--line-height-tight);
+  --typography-verdict-letter-spacing: -0.02em;
+  --typography-verdict-text-transform: uppercase;
+  --typography-verdict-color: var(--color-text-primary);
+}
+
+/* 🟨 LAYER 2 — Numeric Intelligence (Metrics That Matter) */
+:root {
+  --typography-numeric-font-family: var(--font-family-primary);
+  --typography-numeric-font-weight: var(--font-weight-bold);
+  --typography-numeric-font-size: var(--font-size-2xl);
+  --typography-numeric-line-height: var(--line-height-tight);
+  --typography-numeric-letter-spacing: var(--font-letter-spacing-numbers);
+  --typography-numeric-color: var(--color-number-primary);
+  --typography-numeric-font-feature-settings: var(--font-feature-settings-numbers);
+  --typography-numeric-font-variant-numeric: var(--font-variant-numeric-tabular);
+}
+
+/* 🟩 LAYER 3 — Executive Explanation (Human Clarity) */
+:root {
+  --typography-explanation-font-family: var(--font-family-primary);
+  --typography-explanation-font-weight: var(--font-weight-normal);
+  --typography-explanation-font-size: var(--font-size-base);
+  --typography-explanation-line-height: var(--line-height-relaxed);
+  --typography-explanation-letter-spacing: 0;
+  --typography-explanation-color: var(--color-text-secondary);
+}
+
+/* 🟪 LAYER 4 — Analytical Labels (Quiet, Precise) */
+:root {
+  --typography-label-font-family: var(--font-family-primary);
+  --typography-label-font-weight: var(--font-weight-medium);
+  --typography-label-font-size: var(--font-size-sm);
+  --typography-label-line-height: var(--line-height-tight);
+  --typography-label-letter-spacing: 0.025em;
+  --typography-label-text-transform: uppercase;
+  --typography-label-color: var(--color-text-secondary);
+}
+
+/* ⬛ LAYER 5 — Evidence & Debug Text (Engineer Truth) */
+:root {
+  --typography-evidence-font-family: var(--font-family-mono);
+  --typography-evidence-font-weight: var(--font-weight-normal);
+  --typography-evidence-font-size: var(--font-size-sm);
+  --typography-evidence-line-height: var(--line-height-normal);
+  --typography-evidence-letter-spacing: 0.01em;
+  --typography-evidence-color: var(--color-text-supporting);
+}
+
+/* 🔹 LAYER 6 — Meta / Ambient Text (Almost Invisible) */
+:root {
+  --typography-meta-font-family: var(--font-family-primary);
+  --typography-meta-font-weight: var(--font-weight-normal);
+  --typography-meta-font-size: var(--font-size-xs);
+  --typography-meta-line-height: var(--line-height-normal);
+  --typography-meta-letter-spacing: 0.01em;
+  --typography-meta-color: var(--color-text-ambient);
+}
+
+/* =============================================================================
+   SCALE SYSTEM - Ratio-Based (14px Base)
+   ============================================================================= */
+
+:root {
+  /* Base unit - 14px */
+  --font-scale-base: 14px;
+
+  /* Exact role sizes (no half pixels, no 15px nonsense) */
+  --font-size-meta: 12px;      /* Layer 6 */
+  --font-size-label: 13px;     /* Layer 4 */
+  --font-size-body: 14px;      /* Layer 3 */
+  --font-size-evidence: 13px;  /* Layer 5 */
+  --font-size-metrics: 24px;   /* Layer 2 base */
+  --font-size-metrics-large: 28px; /* Layer 2 large */
+  --font-size-verdict: 36px;   /* Layer 1 */
+  --font-size-verdict-large: 40px; /* Layer 1 large */
+
+  /* Legacy sizes mapped to new system */
+  --font-size-xs: var(--font-size-meta);
+  --font-size-sm: var(--font-size-label);
+  --font-size-base: var(--font-size-body);
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: var(--font-size-metrics);
+  --font-size-3xl: 30px;
+  --font-size-4xl: var(--font-size-verdict);
+}
+
+/* =============================================================================
+   FONT WEIGHTS - Limited Palette
+   ============================================================================= */
+
+:root {
   --font-weight-thin: 200;
   --font-weight-light: 300;
   --font-weight-normal: 400;
@@ -206,21 +313,144 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --font-weight-heavy: 800;
+}
 
-  /* Font sizes - hierarchical scale */
-  --font-size-xs: 0.75rem;    /* 12px */
-  --font-size-sm: 0.875rem;   /* 14px */
-  --font-size-base: 1rem;     /* 16px */
-  --font-size-lg: 1.125rem;   /* 18px */
-  --font-size-xl: 1.25rem;    /* 20px */
-  --font-size-2xl: 1.5rem;    /* 24px */
-  --font-size-3xl: 1.875rem;  /* 30px */
-  --font-size-4xl: 2.25rem;   /* 36px */
+/* =============================================================================
+   LETTER SPACING - Numeric Authority
+   ============================================================================= */
 
-  /* Line heights - consistent vertical rhythm */
-  --line-height-tight: 1.25;
-  --line-height-normal: 1.5;
+:root {
+  --font-letter-spacing-tight: -0.025em;    /* Numbers breathe */
+  --font-letter-spacing-normal: 0;
+  --font-letter-spacing-label: 0.025em;     /* Labels subtle */
+  --font-letter-spacing-mono: 0.01em;       /* Evidence clarity */
+
+  /* Legacy mapping */
+  --font-letter-spacing-numbers: var(--font-letter-spacing-tight);
+}
+
+/* =============================================================================
+   LINE RHYTHM - Content-Type Specific
+   ============================================================================= */
+
+:root {
+  /* Headings - tight */
+  --line-height-heading: 1.25;
+
+  /* Body text - relaxed */
+  --line-height-body: 1.5;
+
+  /* Evidence - compact */
+  --line-height-evidence: 1.4;
+
+  /* Never exceed 1.45 - dense but breathable */
+  --line-height-max: 1.45;
+
+  /* Legacy mapping */
+  --line-height-tight: var(--line-height-heading);
+  --line-height-normal: var(--line-height-body);
   --line-height-relaxed: 1.625;
+}
+
+/* =============================================================================
+   NUMERIC AUTHORITY RULES
+   ============================================================================= */
+
+.numeric-authority {
+  font-variant-numeric: var(--font-variant-numeric-tabular);
+  font-feature-settings: var(--font-feature-settings-numbers);
+  letter-spacing: var(--font-letter-spacing-tight);
+  font-weight: var(--font-weight-bold);
+}
+
+.numeric-authority--large {
+  font-size: var(--font-size-metrics-large);
+}
+
+.numeric-authority--small {
+  font-size: var(--font-size-evidence);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Percentage signs smaller than numbers */
+.numeric-authority .percentage {
+  font-size: 0.8em;
+  vertical-align: 0.1em;
+}
+
+/* Time units muted */
+.numeric-authority .time-unit {
+  font-size: var(--font-size-meta);
+  color: var(--color-text-ambient);
+  font-weight: var(--font-weight-normal);
+}
+
+/* =============================================================================
+   TYPOGRAPHY UTILITY CLASSES
+   ============================================================================= */
+
+/* Layer 1 - Verdict Authority */
+.typography-verdict {
+  font-family: var(--typography-verdict-font-family);
+  font-weight: var(--typography-verdict-font-weight);
+  font-size: var(--typography-verdict-font-size);
+  line-height: var(--typography-verdict-line-height);
+  letter-spacing: var(--typography-verdict-letter-spacing);
+  text-transform: var(--typography-verdict-text-transform);
+  color: var(--typography-verdict-color);
+}
+
+/* Layer 2 - Numeric Intelligence */
+.typography-numeric {
+  font-family: var(--typography-numeric-font-family);
+  font-weight: var(--typography-numeric-font-weight);
+  font-size: var(--typography-numeric-font-size);
+  line-height: var(--typography-numeric-line-height);
+  letter-spacing: var(--typography-numeric-letter-spacing);
+  color: var(--typography-numeric-color);
+  font-variant-numeric: var(--typography-numeric-font-variant-numeric);
+  font-feature-settings: var(--typography-numeric-font-feature-settings);
+}
+
+/* Layer 3 - Executive Explanation */
+.typography-explanation {
+  font-family: var(--typography-explanation-font-family);
+  font-weight: var(--typography-explanation-font-weight);
+  font-size: var(--typography-explanation-font-size);
+  line-height: var(--typography-explanation-line-height);
+  letter-spacing: var(--typography-explanation-letter-spacing);
+  color: var(--typography-explanation-color);
+}
+
+/* Layer 4 - Analytical Labels */
+.typography-label {
+  font-family: var(--typography-label-font-family);
+  font-weight: var(--typography-label-font-weight);
+  font-size: var(--typography-label-font-size);
+  line-height: var(--typography-label-line-height);
+  letter-spacing: var(--typography-label-letter-spacing);
+  text-transform: var(--typography-label-text-transform);
+  color: var(--typography-label-color);
+}
+
+/* Layer 5 - Evidence & Debug Text */
+.typography-evidence {
+  font-family: var(--typography-evidence-font-family);
+  font-weight: var(--typography-evidence-font-weight);
+  font-size: var(--typography-evidence-font-size);
+  line-height: var(--typography-evidence-line-height);
+  letter-spacing: var(--typography-evidence-letter-spacing);
+  color: var(--typography-evidence-color);
+}
+
+/* Layer 6 - Meta / Ambient Text */
+.typography-meta {
+  font-family: var(--typography-meta-font-family);
+  font-weight: var(--typography-meta-font-weight);
+  font-size: var(--typography-meta-font-size);
+  line-height: var(--typography-meta-line-height);
+  letter-spacing: var(--typography-meta-letter-spacing);
+  color: var(--typography-meta-color);
 }
 
 /* =============================================================================

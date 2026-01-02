@@ -88,12 +88,100 @@ export function getSpacingValue(scale: number): string {
 }
 
 /**
+ * Apply typography layer classes
+ */
+export function applyTypographyLayer(
+  element: HTMLElement,
+  layer: 'verdict' | 'numeric' | 'explanation' | 'label' | 'evidence' | 'meta'
+): void {
+  // Remove existing typography classes
+  element.classList.remove(
+    'typography-verdict',
+    'typography-numeric',
+    'typography-explanation',
+    'typography-label',
+    'typography-evidence',
+    'typography-meta'
+  );
+
+  // Add new typography class
+  element.classList.add(`typography-${layer}`);
+}
+
+/**
  * Apply number authority styling (higher contrast, tighter spacing)
  */
 export function applyNumberAuthority(element: HTMLElement): void {
-  element.style.color = 'var(--color-number-primary)';
-  element.style.letterSpacing = 'var(--font-letter-spacing-numbers)';
-  element.style.fontWeight = 'var(--font-weight-semibold)';
+  element.classList.add('numeric-authority');
+}
+
+/**
+ * Format numbers with proper typography (tabular, aligned)
+ */
+export function formatNumericValue(value: number, options: {
+  decimals?: number;
+  unit?: string;
+  isPercentage?: boolean;
+} = {}): string {
+  const { decimals = 0, unit = '', isPercentage = false } = options;
+
+  let formatted = value.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  if (isPercentage) {
+    formatted = `${formatted}<span class="percentage">%</span>`;
+  }
+
+  if (unit) {
+    formatted = `${formatted}<span class="time-unit">${unit}</span>`;
+  }
+
+  return formatted;
+}
+
+/**
+ * Ensure vertical alignment of numbers across a container
+ */
+export function alignNumericElements(container: HTMLElement): void {
+  const numericElements = container.querySelectorAll('.numeric-authority, .typography-numeric');
+
+  numericElements.forEach((element) => {
+    (element as HTMLElement).style.verticalAlign = 'baseline';
+    (element as HTMLElement).style.lineHeight = 'var(--line-height-tight)';
+  });
+}
+
+/**
+ * Validate typography hierarchy in a component
+ */
+export function validateTypographyHierarchy(container: HTMLElement): { valid: boolean; issues: string[] } {
+  const issues: string[] = [];
+
+  // Check for mixed typography layers in same semantic context
+  const verdictElements = container.querySelectorAll('.typography-verdict');
+  const numericElements = container.querySelectorAll('.typography-numeric');
+
+  // Numbers should dominate in metric contexts
+  if (numericElements.length > 0 && verdictElements.length > 0) {
+    // This is okay - different semantic contexts
+  }
+
+  // Check for banned patterns
+  const bannedPatterns = ['font-style: italic', 'text-decoration', 'text-shadow'];
+  const styles = container.innerHTML;
+
+  bannedPatterns.forEach(pattern => {
+    if (styles.includes(pattern)) {
+      issues.push(`Banned typography pattern detected: ${pattern}`);
+    }
+  });
+
+  return {
+    valid: issues.length === 0,
+    issues
+  };
 }
 
 /**
