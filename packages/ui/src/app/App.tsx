@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import '../common/visual/index.js'; /* Phase 8.4 - Visual Language System */
 import { Layout } from './layout/Layout';
 import { RunListPage } from './runs/RunListPage';
 import { RunDetailPage } from './runs/RunDetailPage';

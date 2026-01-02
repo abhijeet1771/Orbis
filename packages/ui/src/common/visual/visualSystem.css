@@ -1,0 +1,350 @@
+/**
+ * Phase 8.4 - Orbis Visual Language System
+ *
+ * Prime Visual Truth: Data must feel heavier than UI
+ * Visual Aura: Quiet Authority + Analytical Calm
+ *
+ * Think: Bloomberg terminal energy, Apple Pro apps restraint, NASA dashboards seriousness
+ */
+
+/* =============================================================================
+   BASE CANVAS - PRIMARY BACKGROUND
+   ============================================================================= */
+
+:root {
+  /* Base Canvas - Near-black, not pure black */
+  --color-background: #0a0c0e;           /* Near-black graphite */
+  --color-background-secondary: #111418; /* Slightly lighter layer */
+  --color-background-tertiary: #1a1d21;  /* Even lighter for depth */
+
+  /* Pure black only for absolute contrast (rare) */
+  --color-background-absolute: #000000;
+}
+
+/* =============================================================================
+   STRUCTURAL NEUTRALS - UI SKELETON
+   ============================================================================= */
+
+:root {
+  /* Low saturation, low contrast, slight warmth */
+  --color-neutral-100: #f8f9fa;  /* Lightest (rare) */
+  --color-neutral-200: #e9ecef;
+  --color-neutral-300: #dee2e6;
+  --color-neutral-400: #ced4da;
+  --color-neutral-500: #adb5bd;
+  --color-neutral-600: #6c757d;  /* Base neutral */
+  --color-neutral-700: #495057;  /* Darker */
+  --color-neutral-800: #343a40;  /* Darkest */
+  --color-neutral-900: #212529;
+
+  /* Structural elements */
+  --color-border: #2a2f35;       /* Subtle borders */
+  --color-border-light: #3a4047; /* Lighter borders */
+  --color-border-focus: #4a525a; /* Focus state */
+
+  /* Surface tones for depth */
+  --color-surface: #1a1d21;      /* Card backgrounds */
+  --color-surface-hover: #202428; /* Hover states */
+  --color-surface-active: #252a30; /* Active states */
+}
+
+/* =============================================================================
+   DATA AUTHORITY COLORS - SEMANTIC MEANING
+   ============================================================================= */
+
+:root {
+  /* ✅ PASS / STABLE - Trusted, calm, done */
+  --color-pass: #2d5a3d;          /* Muted green */
+  --color-pass-light: #3d6b4d;    /* Lighter variant */
+  --color-pass-dark: #1f4229;     /* Darker variant */
+  --color-pass-subtle: #1a2920;   /* Very subtle */
+
+  /* ⚠️ RISK / WARNING - Pay attention, not panic */
+  --color-risk: #8b6c3d;          /* Amber/warm yellow */
+  --color-risk-light: #9c7a4d;    /* Lighter variant */
+  --color-risk-dark: #6b5529;     /* Darker variant */
+  --color-risk-subtle: #2a241a;   /* Very subtle */
+
+  /* ❌ FAILURE / BLOCKING - Serious, not urgent */
+  --color-fail: #7d3d3d;          /* Deep red (almost brown-red) */
+  --color-fail-light: #8e4d4d;    /* Lighter variant */
+  --color-fail-dark: #5c2929;     /* Darker variant */
+  --color-fail-subtle: #291a1a;   /* Very subtle */
+}
+
+/* =============================================================================
+   ACCENT BLUE - INTELLIGENCE EMPHASIS
+   ============================================================================= */
+
+:root {
+  /* 🔵 Intelligence accent - focus, selection, emphasis */
+  --color-accent: #4a6fa5;         /* Calm, analytical blue */
+  --color-accent-light: #5a7fb5;   /* Lighter variant */
+  --color-accent-dark: #3a5f95;    /* Darker variant */
+  --color-accent-subtle: #1a2535;  /* Very subtle */
+
+  /* Intelligence states */
+  --color-accent-hover: #6a8fc5;   /* Hover state */
+  --color-accent-focus: #7a9fd5;   /* Focus state */
+  --color-accent-active: #2a4f85;  /* Active state */
+}
+
+/* =============================================================================
+   TEXT HIERARCHY - CONTRAST TIERS
+   ============================================================================= */
+
+:root {
+  /* 🎯 PRIMARY FOCUS - Decision, score (highest contrast) */
+  --color-text-primary: #ffffff;      /* Pure white for critical data */
+  --color-text-primary-secondary: #f8f9fa; /* Near-white */
+
+  /* 📊 SECONDARY CONTEXT - Metrics, counts */
+  --color-text-secondary: #e9ecef;    /* High contrast but secondary */
+  --color-text-secondary-muted: #adb5bd; /* Muted secondary */
+
+  /* 📋 SUPPORTING EVIDENCE - Lists, tables */
+  --color-text-supporting: #9ca3af;   /* Medium contrast */
+  --color-text-supporting-muted: #6b7280; /* Muted supporting */
+
+  /* 🎨 AMBIENT UI - Chrome, labels */
+  --color-text-muted: #64748b;        /* Low contrast */
+  --color-text-disabled: #475569;     /* Disabled state */
+  --color-text-placeholder: #334155;  /* Placeholder text */
+}
+
+/* =============================================================================
+   SEMANTIC STATUS COLORS (Data Authority Mapping)
+   ============================================================================= */
+
+:root {
+  /* Status mappings to data authority colors */
+  --color-status-passed: var(--color-pass);
+  --color-status-passed-light: var(--color-pass-light);
+  --color-status-passed-subtle: var(--color-pass-subtle);
+
+  --color-status-flaky: var(--color-risk);
+  --color-status-flaky-light: var(--color-risk-light);
+  --color-status-flaky-subtle: var(--color-risk-subtle);
+
+  --color-status-failed: var(--color-fail);
+  --color-status-failed-light: var(--color-fail-light);
+  --color-status-failed-subtle: var(--color-fail-subtle);
+
+  --color-status-timed-out: var(--color-fail);
+  --color-status-skipped: var(--color-text-muted);
+  --color-status-running: var(--color-accent);
+}
+
+/* =============================================================================
+   NUMBER AUTHORITY - HIGHER CONTRAST, TIGHTER SPACING
+   ============================================================================= */
+
+:root {
+  /* Numbers have authority - higher contrast than surrounding text */
+  --color-number-primary: #ffffff;    /* Pure white for critical numbers */
+  --color-number-secondary: #f1f5f9;  /* High contrast for metrics */
+  --color-number-supporting: #cbd5e1; /* Medium contrast for counts */
+
+  /* Number-specific spacing */
+  --font-letter-spacing-numbers: -0.025em; /* Tighter than normal text */
+}
+
+/* =============================================================================
+   DEPTH SYSTEM - NO TRADITIONAL SHADOWS
+   ============================================================================= */
+
+/* Depth created through tone shifts, spacing, subtle borders */
+:root {
+  --depth-border-radius: 6px;       /* Subtle rounding */
+  --depth-border-radius-large: 8px; /* Larger elements */
+
+  --depth-border-width: 1px;        /* Standard border */
+  --depth-border-width-light: 0.5px; /* Subtle borders */
+  --depth-border-width-heavy: 2px;  /* Focus borders */
+
+  /* Elevation through background tones (no shadows) */
+  --depth-elevation-1: var(--color-surface);      /* Base */
+  --depth-elevation-2: var(--color-surface-hover); /* Hover */
+  --depth-elevation-3: var(--color-surface-active); /* Active */
+
+  /* Only floating elements get actual shadows (rare) */
+  --depth-shadow-floating: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --depth-shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* =============================================================================
+   LIGHT LOGIC - TOP-DOWN AMBIENT
+   ============================================================================= */
+
+/* Soft edge separation, calm surface reflection illusion */
+:root {
+  --light-edge-highlight: rgba(255, 255, 255, 0.03);  /* Subtle highlight */
+  --light-edge-shadow: rgba(0, 0, 0, 0.2);           /* Soft shadow */
+
+  --light-surface-reflect: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+}
+
+/* =============================================================================
+   TYPOGRAPHY AUTHORITY
+   ============================================================================= */
+
+:root {
+  /* Primary typeface - authority and readability */
+  --font-family-primary: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-family-mono: 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
+
+  /* Font weights - limited palette */
+  --font-weight-thin: 200;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+
+  /* Font sizes - hierarchical scale */
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+  --font-size-4xl: 2.25rem;   /* 36px */
+
+  /* Line heights - consistent vertical rhythm */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+}
+
+/* =============================================================================
+   SPACING SYSTEM - CONSISTENT RHYTHM
+   ============================================================================= */
+
+:root {
+  --space-1: 0.25rem;   /* 4px */
+  --space-1-5: 0.375rem; /* 6px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-2-5: 0.625rem; /* 10px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+  --space-24: 6rem;     /* 96px */
+}
+
+/* =============================================================================
+   INTERACTION STATES - CALM, INTENTIONAL
+   ============================================================================= */
+
+:root {
+  /* Hover states - subtle, not flashy */
+  --interaction-hover-opacity: 0.8;
+  --interaction-hover-background: var(--color-surface-hover);
+
+  /* Focus states - clear but not overwhelming */
+  --interaction-focus-outline: 2px solid var(--color-accent);
+  --interaction-focus-outline-offset: 2px;
+
+  /* Active states - immediate feedback */
+  --interaction-active-background: var(--color-surface-active);
+  --interaction-active-scale: 0.98; /* Subtle press effect */
+
+  /* Disabled states - clear but not harsh */
+  --interaction-disabled-opacity: 0.5;
+  --interaction-disabled-cursor: not-allowed;
+}
+
+/* =============================================================================
+   RESPONSIVE BREAKPOINTS - DESKTOP-FIRST PHILOSOPHY
+   ============================================================================= */
+
+:root {
+  /* Desktop-first breakpoints */
+  --breakpoint-xl: 1280px;  /* Extra large screens */
+  --breakpoint-lg: 1024px;  /* Large screens */
+  --breakpoint-md: 768px;   /* Medium screens */
+  --breakpoint-sm: 640px;   /* Small screens */
+  --breakpoint-xs: 480px;   /* Extra small screens */
+}
+
+/* =============================================================================
+   COMPONENT-SPECIFIC VARIABLES
+   ============================================================================= */
+
+/* Executive Home specific */
+:root {
+  --executive-home-strip-height: 7vh;
+  --executive-home-column-gap: var(--space-6);
+  --executive-home-section-spacing: var(--space-6);
+}
+
+/* Awareness Line */
+:root {
+  --awareness-line-opacity-base: 0.4;
+  --awareness-line-opacity-pulse: 0.6;
+}
+
+/* Status badges */
+:root {
+  --status-badge-padding: var(--space-2) var(--space-3);
+  --status-badge-border-radius: var(--depth-border-radius);
+}
+
+/* =============================================================================
+   DARK THEME OVERRIDES (Orbis is always dark)
+   ============================================================================= */
+
+/* Orbis is permanently dark - no light theme support */
+@media (prefers-color-scheme: light) {
+  /* Force dark theme regardless of system preference */
+  color-scheme: dark;
+}
+
+/* =============================================================================
+   REDUCED MOTION SUPPORT
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    /* Disable any motion that could be disorienting */
+    --motion-duration-multiplier: 0.001;
+  }
+}
+
+/* =============================================================================
+   HIGH CONTRAST MODE SUPPORT
+   ============================================================================= */
+
+@media (prefers-contrast: high) {
+  :root {
+    /* Increase contrast for accessibility */
+    --color-border: #404040;
+    --color-text-muted: #808080;
+    --color-neutral-600: #a0a0a0;
+  }
+}
+
+/* =============================================================================
+   PRINT STYLES (Rare but important)
+   ============================================================================= */
+
+@media print {
+  :root {
+    --color-background: white;
+    --color-text-primary: black;
+    --color-text-secondary: #333333;
+    --color-border: #cccccc;
+  }
+}
