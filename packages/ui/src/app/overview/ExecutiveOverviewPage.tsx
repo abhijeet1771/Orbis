@@ -14,6 +14,7 @@ import { computeReleaseReadiness } from '../../common/readiness/releaseReadiness
 import { resolveOwnership } from '../../common/ownership/ownership.js';
 import { computeGovernanceSignals } from '../../common/governance/governance.js';
 import { buildDecisionTrace } from '../../common/trace/decisionTrace.js';
+import { ExecutiveFTX } from '../../components/ExecutiveFTX.js';
 
 type LoadState =
   | { status: 'idle' }
@@ -26,6 +27,21 @@ export function ExecutiveOverviewPage(): JSX.Element {
   const runState = useRunData(runId);
   const trustState = useTrustIndex(runId);
   const [state, setState] = useState<LoadState>({ status: 'idle' });
+  const [showFTX, setShowFTX] = useState(false);
+
+  // Check if FTX has been shown for this workspace
+  useEffect(() => {
+    if (runId && state.status === 'ready') {
+      // Extract workspace ID from run data (using project name as workspace identifier)
+      const workspaceId = state.current.projects[0]?.name || 'default';
+      const ftxKey = `orbis.ftx.seen.${workspaceId}`;
+      const hasSeenFTX = localStorage.getItem(ftxKey) === 'true';
+
+      if (!hasSeenFTX) {
+        setShowFTX(true);
+      }
+    }
+  }, [runId, state.status, state.current]);
 
   useEffect(() => {
     console.log('[DEBUG] ExecutiveOverviewPage useEffect triggered for runId:', runId, 'status:', runState.status);
@@ -148,6 +164,17 @@ export function ExecutiveOverviewPage(): JSX.Element {
   };
   const confidenceHint = confidenceScore >= 85 ? 'Safe to proceed' : confidenceScore >= 65 ? 'Proceed with caution' : 'Do not proceed';
   const confidenceTone = confidenceScore >= 85 ? 'success' : confidenceScore >= 65 ? 'warning' : 'danger';
+
+  // Show FTX on first visit
+  if (showFTX && state.status === 'ready') {
+    return (
+      <ExecutiveFTX
+        run={current}
+        workspaceId={current.projects[0]?.name || 'default'}
+        onComplete={() => setShowFTX(false)}
+      />
+    );
+  }
 
   return (
     <div className="card">
