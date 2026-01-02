@@ -17,6 +17,7 @@ import { computeGovernanceSignals } from '../../common/governance/governance.js'
 import { buildDecisionTrace } from '../../common/trace/decisionTrace.js';
 import { ExecutiveFTX } from '../../components/ExecutiveFTX.js';
 import { useExecutiveHomeState, useAwarenessLine, useMotionValidation } from '../../common/motion/index.js';
+import '../../common/spatial/index.js'; /* Phase 8.5 - Spatial Rhythm System */
 
 type LoadState =
   | { status: 'idle' }
@@ -201,42 +202,51 @@ export function ExecutiveOverviewPage(): JSX.Element {
 
   return (
     <div className="executive-home">
-      {/* Top Context Strip - Run Identity (6-8vh) */}
-      <div className="executive-home__strip">
-        <div className="executive-home__strip-left">
-          <div className="muted" style={{ fontSize: 12 }}>
-            <Link to="/">← Runs</Link>
+      {/* ZONE 1 — EXECUTIVE HEADER (Fixed, Thin - 56px) */}
+      <header className="executive-home__zone-1">
+        <div className="executive-home__zone-1-content">
+          <div className="executive-home__zone-1-left">
+            <div className="executive-home__wordmark">Orbis</div>
+            <div className="executive-home__mode">Executive Intelligence</div>
           </div>
-          <div style={{ fontSize: 18, fontWeight: 600, marginTop: 4 }}>
-            {formatDateTime(current.startTime)}
+          <div className="executive-home__zone-1-center">
+            <div>{formatDateTime(current.startTime)}</div>
+            <div>Schema {current.schemaVersion}</div>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-            {current.environment.os.name} {current.environment.os.version ?? ''} · {current.projects.map(p => p.name).join(', ')}
-          </div>
-        </div>
-        <div className="executive-home__strip-center">
-          <div className="muted" style={{ fontSize: 12 }}>
-            Schema {current.schemaVersion}
-          </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-            {current.environment.git?.branch ? `${current.environment.git.branch}@` : ''}
-            {current.environment.git?.commit?.slice(0, 7) ?? 'unknown'}
+          <div className="executive-home__zone-1-right">
+            <div>{current.environment.os.name} {current.environment.os.version ?? ''}</div>
+            <div>{current.projects.map(p => p.name).join(', ')}</div>
           </div>
         </div>
-        <div className="executive-home__strip-right">
-          <div className="muted" style={{ fontSize: 12, textAlign: 'right' }}>
-            Workspace: {current.projects[0]?.name || 'unknown'}
-          </div>
-        </div>
-      </div>
+      </header>
 
-      {/* Main 3-Column Layout */}
-      <div className="executive-home__columns">
-        {/* Left Column - Signal Context (20-22vw) */}
-        <div className="executive-home__column executive-home__column--left">
-          <div className="executive-home__section">
-            <div className="executive-home__section-title">Governance Signals</div>
-            <div className="executive-home__signals">
+      {/* ZONE 2 — PRIMARY DECISION BAND (Hero, but Calm - 198px) */}
+      <section className="executive-home__zone-2">
+        <div className="executive-home__zone-2-content">
+          {/* Phase 8.3 - Awareness Line (horizontal presence line) */}
+          <div
+            className="executive-home__awareness-line"
+            style={{
+              opacity: awarenessState.opacity,
+              transition: awarenessState.isPulsing ? 'opacity 140ms ease-out' : 'none'
+            }}
+          />
+
+          <div className="executive-home__verdict-primary">
+            <div className="executive-home__verdict-state">{readiness.label}</div>
+            <div className="executive-home__verdict-score">{readiness.score}</div>
+            <div className="executive-home__verdict-justification">{readiness.rationale}</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ZONE 3 — INTELLIGENCE TRIAD (The Brain - 315px) */}
+      <section className="executive-home__zone-3">
+        <div className="executive-home__zone-3-content">
+          {/* Governance Signals Block */}
+          <div className="executive-home__intelligence-block">
+            <div className="executive-home__intelligence-title">Governance Signals</div>
+            <div className="executive-home__intelligence-content">
               <div className="executive-home__signal">
                 <div className="executive-home__signal-count">{governance.blocking.length}</div>
                 <div className="executive-home__signal-label">Blocking</div>
@@ -252,9 +262,10 @@ export function ExecutiveOverviewPage(): JSX.Element {
             </div>
           </div>
 
-          <div className="executive-home__section">
-            <div className="executive-home__section-title">Ownership Impact</div>
-            <div className="executive-home__ownership">
+          {/* Ownership Impact Block */}
+          <div className="executive-home__intelligence-block">
+            <div className="executive-home__intelligence-title">Ownership Impact</div>
+            <div className="executive-home__intelligence-content">
               <div className="executive-home__ownership-item">
                 <div className="executive-home__ownership-count">{ownershipAgg.owners.length}</div>
                 <div className="executive-home__ownership-label">Teams affected</div>
@@ -270,156 +281,85 @@ export function ExecutiveOverviewPage(): JSX.Element {
             </div>
           </div>
 
-          <div className="executive-home__section">
-            <div className="executive-home__section-title">Change Since Last Run</div>
-            <div className="executive-home__change">
-              {previous ? (
-                regressions ? (
-                  <>
-                    <div className="executive-home__change-item">
-                      <div className="executive-home__change-count">{regressions.summary.newFailures.length}</div>
-                      <div className="executive-home__change-label">New failures</div>
-                    </div>
-                    <div className="executive-home__change-item">
-                      <div className="executive-home__change-count">{regressions.summary.newFlakies.length}</div>
-                      <div className="executive-home__change-label">New flaky</div>
-                    </div>
-                    <div className="executive-home__change-item">
-                      <div className="executive-home__change-count">{regressions.summary.perf.length}</div>
-                      <div className="executive-home__change-label">Performance</div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="muted" style={{ fontSize: 12 }}>Loading...</div>
-                )
+          {/* Trust Profile Block */}
+          <div className="executive-home__intelligence-block">
+            <div className="executive-home__intelligence-title">Trust Profile</div>
+            <div className="executive-home__intelligence-content">
+              {trustByTestId ? (
+                Object.entries(trustDistribution(trustByTestId)).map(([label, count]) => (
+                  <div key={label} className="executive-home__trust-item">
+                    <div className="executive-home__trust-count">{count}</div>
+                    <div className="executive-home__trust-label">{label}</div>
+                  </div>
+                ))
               ) : (
-                <div className="muted" style={{ fontSize: 12 }}>First run</div>
+                <div className="executive-home__trust-item">
+                  <div className="executive-home__trust-label">Loading trust data...</div>
+                </div>
               )}
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Center Column - Executive Core (auto / elastic) */}
-        <div className="executive-home__column executive-home__column--center">
-          {/* Phase 8.3 - Awareness Line (horizontal presence line) */}
-          <div
-            className="executive-home__awareness-line"
-            style={{
-              opacity: awarenessState.opacity,
-              transition: awarenessState.isPulsing ? 'opacity 140ms ease-out' : 'none'
-            }}
-          />
-
-          <div className="executive-home__verdict">
-            <div className="executive-home__verdict-state">{readiness.label}</div>
-            <div className="executive-home__verdict-justification">{readiness.rationale}</div>
-          </div>
-
-          <div className="executive-home__snapshot">
-            <div className="executive-home__snapshot-item">
-              <div className="executive-home__snapshot-value">{(passRate(current) * 100).toFixed(0)}%</div>
-              <div className="executive-home__snapshot-label">Pass rate</div>
-            </div>
-            <div className="executive-home__snapshot-item">
-              <div className="executive-home__snapshot-value">{current.summary.failed}</div>
-              <div className="executive-home__snapshot-label">Failed</div>
-            </div>
-            <div className="executive-home__snapshot-item">
-              <div className="executive-home__snapshot-value">{current.summary.flaky}</div>
-              <div className="executive-home__snapshot-label">Flaky</div>
-            </div>
-            <div className="executive-home__snapshot-item">
-              <div className="executive-home__snapshot-value">
-                {regressions ? (regressions.summary.newFailures.length > 0 ? 'Yes' : 'No') : '—'}
-              </div>
-              <div className="executive-home__snapshot-label">Regressions</div>
+      {/* ZONE 4 — EVIDENCE GATEWAY (Action Layer - 144px) */}
+      <section className="executive-home__zone-4">
+        <div className="executive-home__zone-4-content">
+          {/* Why This Decision */}
+          <div className="executive-home__evidence-card">
+            <div className="executive-home__evidence-title">Why This Decision</div>
+            <div className="executive-home__evidence-summary">
+              {decisionTrace.summary.failedHighTrust + decisionTrace.summary.regressions + decisionTrace.summary.flakyCritical} governance signals
             </div>
           </div>
 
-          <details className="executive-home__decision-trace">
-            <summary className="executive-home__decision-trace-summary">
-              Decision Trace · Score {readiness.score} · {decisionTrace.summary.failedHighTrust + decisionTrace.summary.regressions + decisionTrace.summary.flakyCritical} signals
-            </summary>
-            <div className="executive-home__decision-trace-content">
-              <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-                Based on: {decisionTrace.summary.failedHighTrust} failed high-trust, {decisionTrace.summary.regressions} regressions, {decisionTrace.summary.flakyCritical} flaky critical
-              </div>
-              {decisionTrace.factors.map((f: any, i: number) => (
-                <div key={i} className="executive-home__decision-factor">
-                  <div className="executive-home__decision-factor-label">{f.label}</div>
-                  <div className="executive-home__decision-factor-count">{f.count} tests</div>
-                  <Link to={f.link} className="executive-home__decision-factor-link">View</Link>
-                </div>
-              ))}
-            </div>
-          </details>
-        </div>
-
-        {/* Right Column - Risk Surface (20-22vw) */}
-        <div className="executive-home__column executive-home__column--right">
-          <div className="executive-home__section">
-            <div className="executive-home__section-title">
-              <Link to={`/runs/${current.runId}/index?status=failed`} className="executive-home__section-link">
-                Current Failures
-              </Link>
-            </div>
-            <div className="executive-home__failures">
-              {risk.currentFailures.slice(0, 6).map(failure => (
-                <div key={failure.testId} className="executive-home__failure-item">
-                  <Link to={`/runs/${current.runId}/tests/${failure.testId}/debugger`} className="executive-home__failure-link">
-                    {failure.title}
-                  </Link>
-                </div>
-              ))}
-              {risk.currentFailures.length === 0 && (
-                <div className="muted" style={{ fontSize: 12 }}>No failures</div>
-              )}
+          {/* Current Failures */}
+          <div className="executive-home__evidence-card" onClick={() => window.location.href = `/runs/${current.runId}/index?status=failed`}>
+            <div className="executive-home__evidence-title">Current Failures</div>
+            <div className="executive-home__evidence-summary">
+              {risk.currentFailures.length > 0
+                ? `${risk.currentFailures.length} tests failed`
+                : 'No active failures'}
             </div>
           </div>
 
-          <div className="executive-home__section">
-            <div className="executive-home__section-title">Longest Running</div>
-            <div className="executive-home__long-running">
-              {risk.longestRunning.slice(0, 4).map(test => (
-                <div key={test.testId} className="executive-home__long-running-item">
-                  <div className="executive-home__long-running-title">
-                    <Link to={`/runs/${current.runId}/tests/${test.testId}/debugger`}>
-                      {test.title}
-                    </Link>
-                  </div>
-                  <div className="executive-home__long-running-duration">
-                    {formatDuration(test.timing?.durationMs ?? 0)}
-                  </div>
-                </div>
-              ))}
+          {/* Risk Hotspots */}
+          <div className="executive-home__evidence-card" onClick={() => window.location.href = `/runs/${current.runId}/explorer`}>
+            <div className="executive-home__evidence-title">Risk Hotspots</div>
+            <div className="executive-home__evidence-summary">
+              {regressions?.hotspots.folders.length ?? 0} concentrated areas
             </div>
           </div>
 
-          <div className="executive-home__section">
-            <div className="executive-home__section-title">Regression Summary</div>
-            <div className="executive-home__regressions">
-              {regressions ? (
-                <>
-                  <div className="executive-home__regression-item">
-                    <div className="executive-home__regression-count">{regressions.summary.newFailures.length}</div>
-                    <div className="executive-home__regression-label">New failures</div>
-                  </div>
-                  <div className="executive-home__regression-item">
-                    <div className="executive-home__regression-count">{regressions.summary.newFlakies.length}</div>
-                    <div className="executive-home__regression-label">New flaky</div>
-                  </div>
-                  <div className="executive-home__regression-item">
-                    <div className="executive-home__regression-count">{regressions.summary.perf.length}</div>
-                    <div className="executive-home__regression-label">Performance</div>
-                  </div>
-                </>
-              ) : (
-                <div className="muted" style={{ fontSize: 12 }}>No regressions</div>
-              )}
+          {/* Longest Running */}
+          <div className="executive-home__evidence-card">
+            <div className="executive-home__evidence-title">Longest Running</div>
+            <div className="executive-home__evidence-summary">
+              {risk.longestRunning.length > 0
+                ? `${formatDuration(risk.longestRunning[0].timing?.durationMs ?? 0)}`
+                : 'No timing data'}
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* ZONE 5 — NAVIGATION SPINE (Silent - 72px) */}
+      <nav className="executive-home__zone-5">
+        <div className="executive-home__zone-5-content">
+          <Link to={`/runs/${current.runId}/index`} className="executive-home__nav-item">
+            Execution Index
+          </Link>
+          <Link to={`/runs/${current.runId}/tests/${risk.currentFailures[0]?.testId}/debugger`} className="executive-home__nav-item">
+            Debugger
+          </Link>
+          <Link to={`/tests/${risk.flaky[0]?.testId}/history`} className="executive-home__nav-item">
+            History
+          </Link>
+          <Link to={`/runs/${current.runId}/artifacts`} className="executive-home__nav-item">
+            Artifacts
+          </Link>
+        </div>
+      </nav>
     </div>
   );
 }

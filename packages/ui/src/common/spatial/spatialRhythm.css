@@ -1,0 +1,423 @@
+/**
+ * Phase 8.5 - Home Layout Grid & Spatial Rhythm
+ *
+ * Prime Rule: Everything important fits in one viewport. No scroll.
+ * Target Viewport: 1440 × 900 (canonical laptop + external monitor)
+ * Grid System: 12-column logical grid (invisible alignment)
+ * Vertical Structure: 5 zones with precise spatial relationships
+ */
+
+/* =============================================================================
+   CANONICAL VIEWPORT CONSTANTS
+   ============================================================================= */
+
+:root {
+  /* Phase 8.5 - Canonical viewport: 1440 × 900 */
+  --viewport-canonical-width: 1440px;
+  --viewport-canonical-height: 900px;
+
+  /* Zone height calculations based on canonical viewport */
+  --zone-1-height: 56px;                    /* Executive Header - Fixed, Thin */
+  --zone-2-height: 198px;                   /* Primary Decision Band - ~22% of 900px */
+  --zone-3-height: 315px;                   /* Intelligence Triad - ~35% of 900px */
+  --zone-4-height: 144px;                   /* Evidence Gateway - ~16% of 900px */
+  --zone-5-height: 72px;                    /* Navigation Spine - ~8% of 900px */
+
+  /* Breathing space calculations */
+  --zone-spacing-vertical: var(--space-6);  /* 24px between zones */
+  --zone-spacing-horizontal: var(--space-8); /* 32px side margins */
+
+  /* Content area after header */
+  --content-height: calc(100vh - var(--zone-1-height) - var(--zone-spacing-vertical));
+}
+
+/* =============================================================================
+   12-COLUMN LOGICAL GRID (Invisible Alignment Scaffolding)
+   ============================================================================= */
+
+/* Grid is conceptual - used for alignment calculations only */
+/* No visible columns or gutters in the UI */
+
+:root {
+  /* 12-column grid calculations for 1440px canonical width */
+  --grid-columns: 12;
+  --grid-column-width: calc(var(--viewport-canonical-width) / var(--grid-columns));
+  --grid-gutter: var(--space-4); /* 16px gutters */
+
+  /* Column spans for common layouts */
+  --grid-span-1: calc(var(--grid-column-width) - var(--grid-gutter));
+  --grid-span-2: calc((var(--grid-column-width) * 2) - var(--grid-gutter));
+  --grid-span-3: calc((var(--grid-column-width) * 3) - var(--grid-gutter));
+  --grid-span-4: calc((var(--grid-column-width) * 4) - var(--grid-gutter));
+  --grid-span-6: calc((var(--grid-column-width) * 6) - var(--grid-gutter));
+  --grid-span-8: calc((var(--grid-column-width) * 8) - var(--grid-gutter));
+  --grid-span-12: calc((var(--grid-column-width) * 12) - var(--grid-gutter));
+}
+
+/* =============================================================================
+   ZONE 1 — EXECUTIVE HEADER (Fixed, Thin - 56px)
+   ============================================================================= */
+
+.executive-home__zone-1 {
+  height: var(--zone-1-height);
+  background: var(--color-background-secondary);
+  border-bottom: var(--depth-border-width) solid var(--color-border);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--zone-spacing-horizontal);
+  flex-shrink: 0;
+}
+
+.executive-home__zone-1-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: var(--viewport-canonical-width);
+  margin: 0 auto;
+}
+
+/* Wordmark and mode - left side */
+.executive-home__zone-1-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.executive-home__wordmark {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  letter-spacing: -0.01em;
+}
+
+.executive-home__mode {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-ambient);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Context info - center */
+.executive-home__zone-1-center {
+  flex: 1;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-ambient);
+}
+
+/* Run info - right side */
+.executive-home__zone-1-right {
+  text-align: right;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-ambient);
+}
+
+/* =============================================================================
+   ZONE 2 — PRIMARY DECISION BAND (Hero, but Calm - 198px)
+   ============================================================================= */
+
+.executive-home__zone-2 {
+  height: var(--zone-2-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--zone-spacing-horizontal);
+  background: var(--color-background);
+}
+
+.executive-home__zone-2-content {
+  max-width: var(--grid-span-8); /* 8-column span */
+  text-align: center;
+}
+
+/* Primary verdict - the nucleus */
+.executive-home__verdict-primary {
+  margin-bottom: var(--space-6);
+}
+
+.executive-home__verdict-state {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-heavy);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.02em;
+}
+
+.executive-home__verdict-score {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-number-primary);
+  letter-spacing: var(--font-letter-spacing-numbers);
+  margin-bottom: var(--space-3);
+}
+
+.executive-home__verdict-justification {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* =============================================================================
+   ZONE 3 — INTELLIGENCE TRIAD (The Brain - 315px)
+   ============================================================================= */
+
+.executive-home__zone-3 {
+  height: var(--zone-3-height);
+  display: flex;
+  padding: var(--space-6) var(--zone-spacing-horizontal);
+  gap: var(--space-8);
+  background: var(--color-background);
+}
+
+.executive-home__zone-3-content {
+  display: flex;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: var(--viewport-canonical-width);
+  margin: 0 auto;
+}
+
+/* Intelligence blocks - equal width */
+.executive-home__intelligence-block {
+  flex: 1;
+  background: var(--color-surface);
+  border-radius: var(--depth-border-radius-large);
+  border: var(--depth-border-width-light) solid var(--color-border);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+}
+
+.executive-home__intelligence-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.executive-home__intelligence-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* =============================================================================
+   ZONE 4 — EVIDENCE GATEWAY (Action Layer - 144px)
+   ============================================================================= */
+
+.executive-home__zone-4 {
+  height: var(--zone-4-height);
+  padding: var(--space-4) var(--zone-spacing-horizontal);
+  background: var(--color-background);
+  border-top: var(--depth-border-width-light) solid var(--color-border);
+}
+
+.executive-home__zone-4-content {
+  max-width: var(--viewport-canonical-width);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-6);
+}
+
+/* Evidence cards */
+.executive-home__evidence-card {
+  background: var(--color-surface);
+  border-radius: var(--depth-border-radius);
+  border: var(--depth-border-width-light) solid var(--color-border);
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: all var(--motion-timing-scale-system-response) ease-out;
+}
+
+.executive-home__evidence-card:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent-light);
+}
+
+.executive-home__evidence-card:focus-visible {
+  outline: var(--interaction-focus-outline);
+  outline-offset: var(--interaction-focus-outline-offset);
+}
+
+.executive-home__evidence-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-supporting);
+  margin-bottom: var(--space-2);
+}
+
+.executive-home__evidence-summary {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-ambient);
+  line-height: var(--line-height-normal);
+}
+
+/* =============================================================================
+   ZONE 5 — NAVIGATION SPINE (Silent - 72px)
+   ============================================================================= */
+
+.executive-home__zone-5 {
+  height: var(--zone-5-height);
+  padding: var(--space-3) var(--zone-spacing-horizontal);
+  background: var(--color-background-secondary);
+  border-top: var(--depth-border-width) solid var(--color-border);
+}
+
+.executive-home__zone-5-content {
+  max-width: var(--viewport-canonical-width);
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+/* Navigation items - silent by default */
+.executive-home__nav-item {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-ambient);
+  text-decoration: none;
+  border-radius: var(--depth-border-radius);
+  transition: all var(--motion-timing-scale-system-response) ease-out;
+  opacity: 0.7; /* Silent state */
+}
+
+.executive-home__nav-item:hover,
+.executive-home__nav-item:focus-visible {
+  color: var(--color-accent);
+  background: var(--color-surface);
+  opacity: 1;
+  outline: var(--interaction-focus-outline);
+  outline-offset: var(--interaction-focus-outline-offset);
+}
+
+/* =============================================================================
+   SPATIAL RHYTHM RULES
+   ============================================================================= */
+
+/* Density gradient: Top calm/sparse → Bottom denser/actionable */
+.executive-home__zone-1 { /* Sparse, minimal */
+  --local-density: 0.2;
+}
+
+.executive-home__zone-2 { /* Calm, focused */
+  --local-density: 0.4;
+}
+
+.executive-home__zone-3 { /* Analytical, structured */
+  --local-density: 0.6;
+}
+
+.executive-home__zone-4 { /* Evidence-rich, actionable */
+  --local-density: 0.8;
+}
+
+.executive-home__zone-5 { /* Navigation, minimal */
+  --local-density: 0.3;
+}
+
+/* Breathing space enforcement */
+.executive-home__zone-spacing {
+  height: var(--zone-spacing-vertical);
+}
+
+/* Alignment discipline - everything aligns to logical columns */
+.executive-home__aligned-left {
+  justify-self: start;
+}
+
+.executive-home__aligned-center {
+  justify-self: center;
+}
+
+.executive-home__aligned-right {
+  justify-self: end;
+}
+
+/* =============================================================================
+   RESPONSIVE ADAPTATIONS (Viewport-First Scaling)
+   ============================================================================= */
+
+/* Canonical viewport (1440×900) - perfect lock */
+@media (min-width: 1440px) and (min-height: 900px) {
+  .executive-home {
+    /* Perfect canonical layout */
+  }
+}
+
+/* Smaller screens - graceful degradation */
+@media (max-width: 1439px) {
+  .executive-home__zone-3-content {
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .executive-home__intelligence-block {
+    width: 100%;
+  }
+
+  .executive-home__zone-4-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-height: 899px) {
+  --zone-1-height: 48px;
+  --zone-2-height: 180px;
+  --zone-3-height: 280px;
+  --zone-4-height: 120px;
+  --zone-5-height: 64px;
+
+  .executive-home__verdict-state {
+    font-size: var(--font-size-3xl);
+  }
+
+  .executive-home__verdict-score {
+    font-size: var(--font-size-2xl);
+  }
+}
+
+/* Very small screens - emergency layout */
+@media (max-width: 768px) {
+  .executive-home__zone-1-content {
+    flex-direction: column;
+    gap: var(--space-2);
+    text-align: center;
+  }
+
+  .executive-home__zone-2 {
+    padding: var(--space-4);
+  }
+
+  .executive-home__zone-3 {
+    padding: var(--space-4);
+  }
+
+  .executive-home__zone-5-content {
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+}
+
+/* Large screens - rhythmic expansion */
+@media (min-width: 1920px) {
+  .executive-home__zone-3-content {
+    max-width: 1600px;
+  }
+
+  .executive-home__zone-4-content {
+    max-width: 1600px;
+  }
+}

@@ -1,8 +1,10 @@
 /* Phase 8.2 - Executive Home Hierarchy & Viewport Composition */
 /* Phase 8.3 - Motion System Integration */
 /* Phase 8.4 - Visual Language System */
+/* Phase 8.5 - Spatial Rhythm System */
 
 @import '../../common/visual/visualSystem.css';
+@import '../../common/spatial/spatialRhythm.css';
 
 .executive-home {
   height: 100vh;
@@ -42,164 +44,9 @@
   text-align: right;
 }
 
-/* Main 3-Column Layout */
-.executive-home__columns {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
+/* Legacy 3-column layout removed - replaced by 5-zone spatial rhythm system */
 
-.executive-home__column {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.executive-home__column--left,
-.executive-home__column--right {
-  width: 21vw;
-  min-width: 280px;
-  max-width: 360px;
-  flex-shrink: 0;
-  padding: var(--space-5);
-}
-
-.executive-home__column--center {
-  flex: 1;
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-/* Sections within columns */
-.executive-home__section {
-  margin-bottom: var(--executive-home-section-spacing);
-}
-
-.executive-home__section:last-child {
-  margin-bottom: 0;
-}
-
-.executive-home__section-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-3);
-  text-transform: uppercase;
-  letter-spacing: 0.025em; /* Subtle letter spacing */
-  line-height: var(--line-height-tight);
-}
-
-.executive-home__section-link {
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.executive-home__section-link:hover {
-  color: var(--color-primary);
-}
-
-/* Left Column - Signal Context */
-
-/* Governance Signals - Supporting Context */
-.executive-home__signals {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.executive-home__signal {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  border-radius: var(--depth-border-radius);
-  border: var(--depth-border-width-light) solid var(--color-border);
-}
-
-.executive-home__signal-count {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-number-secondary); /* Number authority */
-  letter-spacing: var(--font-letter-spacing-numbers);
-}
-
-.executive-home__signal-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-supporting);
-  font-weight: var(--font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
-
-/* Ownership Impact - Supporting Context */
-.executive-home__ownership {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.executive-home__ownership-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  border-radius: var(--depth-border-radius);
-  border: var(--depth-border-width-light) solid var(--color-border);
-}
-
-.executive-home__ownership-count {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-number-supporting); /* Number authority */
-  letter-spacing: var(--font-letter-spacing-numbers);
-}
-
-.executive-home__ownership-label {
-  font-size: 10px;
-  color: var(--color-text-supporting);
-  font-weight: var(--font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
-
-/* Change Since Last Run - Ambient Context */
-.executive-home__change {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1-5); /* Custom spacing for tight layout */
-}
-
-.executive-home__change-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-1-5) var(--space-2-5);
-  background: var(--color-surface);
-  border-radius: calc(var(--depth-border-radius) * 0.75);
-  border: var(--depth-border-width-light) solid var(--color-border);
-}
-
-.executive-home__change-count {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-number-supporting);
-  letter-spacing: var(--font-letter-spacing-numbers);
-}
-
-.executive-home__change-label {
-  font-size: 9px;
-  color: var(--color-text-ambient);
-  font-weight: var(--font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
+/* Legacy column-based styling removed - replaced by 5-zone spatial rhythm system */
 
 /* Center Column - Executive Core */
 
@@ -502,4 +349,31 @@
   z-index: 0;
   opacity: var(--awareness-line-opacity-base);
   transition: opacity var(--motion-timing-scale-awareness-pulse) ease-out;
+}
+
+/* Trust Profile Items */
+.executive-home__trust-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--depth-border-radius);
+  border: var(--depth-border-width-light) solid var(--color-border);
+  margin-bottom: var(--space-2);
+}
+
+.executive-home__trust-count {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-number-supporting);
+  letter-spacing: var(--font-letter-spacing-numbers);
+}
+
+.executive-home__trust-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-supporting);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
