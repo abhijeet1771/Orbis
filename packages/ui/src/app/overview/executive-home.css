@@ -1,4 +1,5 @@
 /* Phase 8.2 - Executive Home Hierarchy & Viewport Composition */
+/* Phase 8.3 - Motion System Integration */
 
 .executive-home {
   height: 100vh;
@@ -406,4 +407,22 @@
   .executive-home__strip {
     height: 6vh;
   }
+}
+
+/* Phase 8.3 - Awareness Line (Behavioral Contract Only) */
+/* This is the reframed "blue ray" - horizontal presence line */
+/* No constant movement. Reacts to state changes only. */
+
+.executive-home__awareness-line {
+  /* Phase 8.3: Behavioral placeholder only */
+  /* Visual implementation comes in Phase 8.4 */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 60vw;
+  height: 1px;
+  background: rgba(110, 168, 255, 0.4); /* Placeholder color */
+  pointer-events: none;
+  z-index: 0;
 }

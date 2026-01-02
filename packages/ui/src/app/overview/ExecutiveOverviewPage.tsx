@@ -16,6 +16,7 @@ import { resolveOwnership } from '../../common/ownership/ownership.js';
 import { computeGovernanceSignals } from '../../common/governance/governance.js';
 import { buildDecisionTrace } from '../../common/trace/decisionTrace.js';
 import { ExecutiveFTX } from '../../components/ExecutiveFTX.js';
+import { useExecutiveHomeState, useAwarenessLine, useMotionValidation } from '../../common/motion/index.js';
 
 type LoadState =
   | { status: 'idle' }
@@ -30,6 +31,11 @@ export function ExecutiveOverviewPage(): JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'idle' });
   const [showFTX, setShowFTX] = useState(false);
 
+  // Phase 8.3 - Motion System Integration
+  const { currentState: motionState, transition: triggerMotionTransition } = useExecutiveHomeState();
+  const { awarenessState, triggerPulse } = useAwarenessLine();
+  const { validateMotion } = useMotionValidation();
+
   // Check if FTX has been shown for this workspace
   useEffect(() => {
     if (runId && state.status === 'ready') {
@@ -40,9 +46,12 @@ export function ExecutiveOverviewPage(): JSX.Element {
 
       if (!hasSeenFTX) {
         setShowFTX(true);
+      } else {
+        // Phase 8.3 - Transition from Cold Entry to Awareness
+        triggerMotionTransition('ftx-complete');
       }
     }
-  }, [runId, state.status]);
+  }, [runId, state.status, triggerMotionTransition]);
 
   useEffect(() => {
     console.log('[DEBUG] ExecutiveOverviewPage useEffect triggered for runId:', runId, 'status:', runState.status);
@@ -73,12 +82,19 @@ export function ExecutiveOverviewPage(): JSX.Element {
 
         console.log('[DEBUG] Overview data loaded - previous run:', previous?.runId || 'none');
         setState({ status: 'ready', current, previous });
+
+        // Phase 8.3 - Data load complete, transition to Decision Stable
+        setTimeout(() => {
+          triggerMotionTransition('data-load');
+          triggerPulse('data-load');
+        }, 100); // Small delay for smooth transition
+
       } catch (err) {
         console.error('[DEBUG] Error in overview loading:', err);
         setState({ status: 'error', error: err instanceof Error ? err.message : 'Failed to load overview' });
       }
     })();
-  }, [runId, runState]);
+  }, [runId, runState, triggerMotionTransition, triggerPulse]);
 
   if (state.status === 'loading' || state.status === 'idle' || trustState.status === 'loading') {
     return (
@@ -117,6 +133,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
   console.log('[DEBUG] About to compute readiness...');
   const readiness = computeReleaseReadiness(current, previous, regressions, trustByTestId);
   console.log('[DEBUG] Readiness computed:', readiness);
+  console.log('[DEBUG] Motion state:', motionState, 'Awareness:', awarenessState);
 
   console.log('[DEBUG] About to compute deltas...');
   const deltas = computeDeltas(current, previous);
@@ -284,6 +301,15 @@ export function ExecutiveOverviewPage(): JSX.Element {
 
         {/* Center Column - Executive Core (auto / elastic) */}
         <div className="executive-home__column executive-home__column--center">
+          {/* Phase 8.3 - Awareness Line (horizontal presence line) */}
+          <div
+            className="executive-home__awareness-line"
+            style={{
+              opacity: awarenessState.opacity,
+              transition: awarenessState.isPulsing ? 'opacity 140ms ease-out' : 'none'
+            }}
+          />
+
           <div className="executive-home__verdict">
             <div className="executive-home__verdict-state">{readiness.label}</div>
             <div className="executive-home__verdict-justification">{readiness.rationale}</div>
