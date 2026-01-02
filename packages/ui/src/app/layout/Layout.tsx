@@ -1,9 +1,10 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import './layout.css';
 import { useDataContext } from '../data/DataContext';
+import { LiveProgress, RunningNowStrip, ActivityFeed, LiveCompletionBanner } from '../live/LiveProgress';
 
 export function Layout(): JSX.Element {
-  const { mode, setMode } = useDataContext();
+  const { mode, setMode, workspaceName } = useDataContext();
   const location = useLocation();
   const isLive = mode === 'live';
   return (
@@ -25,7 +26,16 @@ export function Layout(): JSX.Element {
             Switch to {isLive ? 'Static' : 'Live'}
           </button>
         </div>
+        <div className="layout__workspace">
+          Workspace: {workspaceName ?? 'Unknown'}
+        </div>
       </header>
+      <div className="layout__live">
+        {isLive && <LiveProgress />}
+        {isLive && <RunningNowStrip />}
+        {isLive && <ActivityFeed />}
+        {isLive && <LiveCompletionBanner />}
+      </div>
       <main className="layout__main">
         <Outlet />
       </main>

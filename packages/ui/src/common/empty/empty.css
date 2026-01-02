@@ -1,0 +1,37 @@
+.empty-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  color: #e6e9f0;
+}
+
+.empty-card {
+  border: 1px solid #1f2533;
+  border-radius: 12px;
+  background: #0b0d12;
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.empty-description {
+  color: #9aa3b5;
+  line-height: 1.5;
+}
+
+.empty-action {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #3a82f7;
+  background: #1b2436;
+  color: #e6e9f0;
+  cursor: pointer;
+}
+

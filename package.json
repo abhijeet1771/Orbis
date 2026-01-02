@@ -13,8 +13,9 @@
     "lint": "echo \"lint placeholder (add linting in future steps)\""
   },
   "devDependencies": {
+    "@orbisreport/server": "workspace:*",
+    "@playwright/test": "^1.40.0",
     "@types/node": "^20.10.6",
     "typescript": "^5.3.3"
   }
 }
-

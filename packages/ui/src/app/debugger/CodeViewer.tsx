@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { SkeletonBlock, SkeletonLine } from '../../common/skeleton';
 import './codeviewer.css';
 
 interface Props {
@@ -30,8 +31,8 @@ export function CodeViewer({ filePath, highlightLine, flashKey }: Props): JSX.El
         if (!mounted) return;
         const lines = content.split('\n');
         const lineIdx = highlightLine ? Math.max(highlightLine - 1, 0) : 0;
-        const start = Math.max(lineIdx - 8, 0);
-        const end = Math.min(lineIdx + 8, lines.length - 1);
+        const start = Math.max(lineIdx - 12, 0);
+        const end = Math.min(lineIdx + 12, lines.length - 1);
         setState({
           status: 'ready',
           lines: lines.slice(start, end + 1),
@@ -54,23 +55,44 @@ export function CodeViewer({ filePath, highlightLine, flashKey }: Props): JSX.El
     return () => clearTimeout(t);
   }, [flashKey]);
 
+  const editorLink = useMemo(() => {
+    if (!highlightLine) return `vscode://file/${filePath}`;
+    return `vscode://file/${filePath}:${highlightLine}`;
+  }, [filePath, highlightLine]);
+
   if (state.status === 'loading' || state.status === 'idle') {
-    return <div className="codeviewer">Loading source…</div>;
+    return (
+      <div className="codeviewer">
+        <div className="codeviewer__path">{filePath}</div>
+        <SkeletonLine width="60%" />
+        <SkeletonBlock height={200} />
+      </div>
+    );
   }
 
   if (state.status === 'error') {
     return (
       <div className="codeviewer">
-        <div>Source unavailable.</div>
+        <div className="codeviewer__path">{filePath}</div>
+        <div>Source not available.</div>
         <div className="muted">{state.error}</div>
-        <div className="muted">Ensure the server can serve workspace files.</div>
       </div>
     );
   }
 
   return (
     <div className="codeviewer">
-      <div className="codeviewer__path">{filePath}</div>
+      <div className="codeviewer__path">
+        <span>{filePath}</span>
+        <div className="codeviewer__actions">
+          <button onClick={() => navigator.clipboard.writeText(filePath)} className="codeviewer__btn">
+            Copy path
+          </button>
+          <a href={editorLink} className="codeviewer__btn" target="_blank" rel="noreferrer">
+            Open in editor
+          </a>
+        </div>
+      </div>
       <pre className="codeviewer__pre">
         {state.lines.map((line, idx) => {
           const lineNumber = state.startLine + idx;
@@ -93,7 +115,8 @@ export function CodeViewer({ filePath, highlightLine, flashKey }: Props): JSX.El
 }
 
 async function fetchSource(path: string): Promise<string> {
-  const res = await fetch(path, { cache: 'no-store' });
+  const safePath = path.startsWith('/') ? path : `/${path}`;
+  const res = await fetch(encodeURI(safePath), { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`Failed to fetch source: ${res.status} ${res.statusText}`);
   }

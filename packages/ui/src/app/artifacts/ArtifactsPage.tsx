@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import type { AttachmentInfo, TestRun, TestCaseResult } from '@orbisreport/core';
 import { useRunData } from '../data/useRunData';
 import { useDataContext } from '../data/DataContext';
+import { EmptyState } from '../../common/empty/EmptyState';
+import { SkeletonBlock, SkeletonLine } from '../../common/skeleton';
 import { formatDateTime, formatDuration } from '../util/format';
 import './artifacts.css';
 
@@ -63,7 +65,22 @@ export function ArtifactsPage(): JSX.Element {
   }, [state, typeFilter, search]);
 
   if (state.status === 'loading' || state.status === 'idle') {
-    return <div className="card">Loading artifacts...</div>;
+    return (
+      <div className="card">
+        <SkeletonLine width="60%" />
+        <SkeletonLine width="40%" />
+        <div className="artifacts__counts" style={{ marginTop: 12 }}>
+          {[...Array(5)].map((_, idx) => (
+            <SkeletonLine key={idx} width="18%" />
+          ))}
+        </div>
+        <div className="artifacts__grid" style={{ marginTop: 12 }}>
+          {[...Array(6)].map((_, idx) => (
+            <SkeletonBlock key={idx} height={180} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (state.status === 'error') {
@@ -135,7 +152,11 @@ export function ArtifactsPage(): JSX.Element {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card">No artifacts found for this filter.</div>
+        <EmptyState
+          title="No artifacts captured yet"
+          description="Screenshots, videos, traces, and logs will show up here as soon as tests attach them."
+          size="md"
+        />
       ) : view === 'grid' ? (
         <div className="artifacts__grid">
           {filtered.map(item => (

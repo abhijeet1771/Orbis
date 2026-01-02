@@ -3,7 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { TestRun, TestCaseResult, TestStatus } from '@orbisreport/core';
 import { getRuns, getRun, RunSummaryItem } from '../api/client';
 import { useDataContext } from '../data/DataContext';
+import { EmptyState } from '../../common/empty/EmptyState';
+import { SkeletonBlock, SkeletonLine } from '../../common/skeleton';
+import { StatusBadge } from '../../common/status/StatusBadge';
 import { formatDateTime, formatDuration } from '../util/format';
+import { computeTrust } from '../../common/trust/trustScore';
+import { TrustBadge } from '../../common/trust/TrustBadge';
+import { TrustExplain } from '../../common/trust/TrustExplain';
 import './history.css';
 
 interface HistoryPoint {
@@ -80,7 +86,17 @@ export function TestHistoryPage(): JSX.Element {
   }, [testId, mode]);
 
   if (state.status === 'loading' || state.status === 'idle') {
-    return <div className="card">Loading history...</div>;
+    return (
+      <div className="card">
+        <SkeletonLine width="50%" />
+        <SkeletonLine width="40%" />
+        <div className="grid" style={{ marginTop: 12 }}>
+          {[...Array(6)].map((_, idx) => (
+            <SkeletonBlock key={idx} height={72} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (state.status === 'error') {
@@ -97,6 +113,23 @@ export function TestHistoryPage(): JSX.Element {
   const points = state.points;
   const summary = summarize(points);
   const stability = stabilityBadge(points);
+  const trust = computeTrust(
+    points.map(p => ({
+      status: p.status,
+      durationMs: p.durationMs,
+      timestamp: p.timestamp
+    }))
+  );
+
+  if (points.length === 0) {
+    return (
+      <EmptyState
+        title="No history yet"
+        description="This test hasn’t appeared in prior runs. As it executes over time, its history will build here."
+        size="md"
+      />
+    );
+  }
 
   return (
     <div className="card">
@@ -116,7 +149,10 @@ export function TestHistoryPage(): JSX.Element {
             {!state.tags?.length && <span className="muted">No tags</span>}
           </div>
         </div>
-        <div className={`stability stability--${stability.kind}`}>{stability.label}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          <TrustBadge trust={trust} />
+          <div className={`stability stability--${stability.kind}`}>{stability.label}</div>
+        </div>
       </div>
 
       <div style={{ marginTop: 16 }}>
@@ -130,6 +166,10 @@ export function TestHistoryPage(): JSX.Element {
         <Stat label="First failure" value={summary.firstFailure ? formatDateTime(summary.firstFailure) : '—'} />
         <Stat label="Last failure" value={summary.lastFailure ? formatDateTime(summary.lastFailure) : '—'} />
         <Stat label="Total runs" value={points.length} />
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <TrustExplain trust={trust} />
       </div>
 
       <div className="card" style={{ marginTop: 16, padding: 0 }}>
@@ -302,18 +342,6 @@ function Stat({ label, value }: { label: string; value: number | string }): JSX.
 }
 
 function StatusChip({ status }: { status: TestStatus }): JSX.Element {
-  const color =
-    status === 'passed'
-      ? '#66bb6a'
-      : status === 'flaky'
-        ? '#ffca28'
-        : status === 'failed' || status === 'timedOut'
-          ? '#ef5350'
-          : '#9aa3b5';
-  return (
-    <span className="pill" style={{ background: 'transparent', border: `1px solid ${color}`, color }}>
-      {status}
-    </span>
-  );
+  return <StatusBadge status={status} />;
 }
 

@@ -1,0 +1,29 @@
+.reg-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  background: #0f1219;
+  color: #e6e9f0;
+}
+
+.reg-critical {
+  border-color: rgba(241, 105, 94, 0.8);
+  color: #ffd7d3;
+}
+
+.reg-moderate {
+  border-color: rgba(246, 198, 89, 0.8);
+  color: #ffe6b5;
+}
+
+.reg-minor {
+  border-color: rgba(122, 177, 236, 0.8);
+  color: #d7e7fb;
+}
+
+.reg-info {
+  border-color: rgba(128, 144, 170, 0.6);
+  color: #dfe5f0;
+}
+

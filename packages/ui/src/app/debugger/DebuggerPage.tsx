@@ -11,10 +11,18 @@ import type {
   NetworkRequestInfo
 } from '@orbisreport/core';
 import { useRunData } from '../data/useRunData';
-import { StatusPill } from '../shared/StatusPill';
 import { formatDuration } from '../util/format';
 import './debugger.css';
 import { CodeViewer } from './CodeViewer';
+import { EmptyState } from '../../common/empty/EmptyState';
+import { SkeletonTree, SkeletonDetail } from '../../common/skeleton';
+import { StatusBadge } from '../../common/status/StatusBadge';
+import { useDataContext } from '../data/DataContext';
+import { useTrustIndex } from '../data/useTrustIndex';
+import { TrustBadge } from '../../common/trust/TrustBadge';
+import { TrustExplain } from '../../common/trust/TrustExplain';
+import { resolveOwnership } from '../../common/ownership/ownership';
+import { computeGovernanceSignals } from '../../common/governance/governance';
 
 type LoadState =
   | { status: 'idle' }
@@ -40,10 +48,18 @@ interface TreeNode {
     | { network: NetworkRequestInfo };
 }
 
+interface FailurePathResult {
+  nodes: Map<string, TreeNode>;
+  order: string[];
+  failurePath: string[];
+}
+
 export function DebuggerPage(): JSX.Element {
   const { runId, testId } = useParams<{ runId: string; testId: string }>();
   const navigate = useNavigate();
   const runState = useRunData(runId);
+  const trustState = useTrustIndex(runId);
+  const { mode } = useDataContext();
   const [state, setState] = useState<LoadState>({ status: 'idle' });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
@@ -51,6 +67,8 @@ export function DebuggerPage(): JSX.Element {
   const userControlUntil = useRef<number>(0);
   const seenFailureIds = useRef<Set<string>>(new Set());
   const seenAttachments = useRef<Set<string>>(new Set());
+  const [newFailureNotice, setNewFailureNotice] = useState<string | null>(null);
+  const [showAllEvidence, setShowAllEvidence] = useState(false);
 
   useEffect(() => {
     if (!runId || !testId) return;
@@ -72,8 +90,8 @@ export function DebuggerPage(): JSX.Element {
     setState({ status: 'ready', run, test });
   }, [runId, testId, runState]);
 
-  const tree = useMemo(() => {
-    if (state.status !== 'ready') return { nodes: new Map<string, TreeNode>(), order: [] as string[] };
+  const tree = useMemo<FailurePathResult>(() => {
+    if (state.status !== 'ready') return { nodes: new Map<string, TreeNode>(), order: [] as string[], failurePath: [] as string[] };
     return buildTree(state.test);
   }, [state]);
 
@@ -92,38 +110,57 @@ export function DebuggerPage(): JSX.Element {
       shouldAutoFocus = false;
     }
     if (shouldAutoFocus) {
-      const targetStep = failingSteps[failingSteps.length - 1];
-      if (targetStep) {
-        setSelectedId(targetStep.stepId);
-        const chain: string[] = [];
-        let parent = targetStep.parentStepId;
-        while (parent) {
-          chain.push(parent);
-          const p = state.test.steps.find(s => s.stepId === parent);
-          parent = p?.parentStepId;
+      const failurePathIds = tree.failurePath.length ? tree.failurePath : [];
+      if (failurePathIds.length) {
+        setSelectedId(failurePathIds[failurePathIds.length - 1]);
+        setExpanded(new Set(failurePathIds));
+      } else {
+        const targetStep = failingSteps[failingSteps.length - 1];
+        if (targetStep) {
+          setSelectedId(targetStep.stepId);
+          const chain: string[] = [];
+          let parent = targetStep.parentStepId;
+          while (parent) {
+            chain.push(parent);
+            const p = state.test.steps.find(s => s.stepId === parent);
+            parent = p?.parentStepId;
+          }
+          setExpanded(prev => new Set([...prev, targetStep.stepId, ...chain]));
+        } else if (state.test.failure) {
+          const failureId = `${state.test.testId}-failure`;
+          setSelectedId(failureId);
+          setExpanded(prev => new Set([...prev, failureId]));
         }
-        setExpanded(prev => new Set([...prev, targetStep.stepId, ...chain]));
-      } else if (state.test.failure) {
-        const failureId = `${state.test.testId}-failure`;
-        setSelectedId(failureId);
-        setExpanded(prev => new Set([...prev, failureId]));
       }
       newFailures.forEach(id => seenFailureIds.current.add(id));
+      setNewFailureNotice(null);
+    } else {
+      if (mode === 'live' && newFailures.size > 0) {
+        const failurePathIds = tree.failurePath.length ? tree.failurePath : [];
+        const target = failurePathIds.length ? failurePathIds[failurePathIds.length - 1] : undefined;
+        setNewFailureNotice(target ?? 'new-failure');
+      }
     }
-  }, [state]);
+  }, [state, tree.failurePath, mode]);
 
   useEffect(() => {
     if (state.status !== 'ready') return;
-    const firstFailure = Array.from(tree.order).find(id => tree.nodes.get(id)?.type === 'failure');
-    if (firstFailure) {
-      setSelectedId(firstFailure);
-      const children = tree.nodes.get(firstFailure)?.children ?? [];
-      setExpanded(new Set([firstFailure, ...children]));
-      queueMicrotask(() => {
-        treeRef.current?.focus();
-      });
+    const path = tree.failurePath;
+    if (path.length) {
+      setSelectedId(path[path.length - 1]);
+      setExpanded(new Set(path));
+    } else {
+      const firstFailure = Array.from(tree.order).find(id => tree.nodes.get(id)?.type === 'failure');
+      if (firstFailure) {
+        setSelectedId(firstFailure);
+        const children = tree.nodes.get(firstFailure)?.children ?? [];
+        setExpanded(new Set([firstFailure, ...children]));
+      }
     }
-  }, [state.status, tree.order, tree.nodes]);
+    queueMicrotask(() => {
+      treeRef.current?.focus();
+    });
+  }, [state.status, tree.failurePath, tree.order, tree.nodes]);
 
   const visibleOrder = useMemo(() => {
     return flattenVisible(tree, expanded);
@@ -166,21 +203,50 @@ export function DebuggerPage(): JSX.Element {
   );
 
   if (state.status === 'loading' || state.status === 'idle') {
-    return <div className="card">Loading debugger...</div>;
-  }
-
-  if (state.status === 'error') {
     return (
-      <div className="card">
-        <div>Failed to load debugger: {state.error}</div>
-        <div style={{ marginTop: 8 }}>
-          <Link to={runId ? `/runs/${runId}` : '/'}>Back</Link>
+      <div className="debugger">
+        <div className="debugger__header">
+          <SkeletonLine width="40%" />
+        </div>
+        <div className="debugger__body">
+          <div className="debugger__tree">
+            <SkeletonTree rows={8} />
+          </div>
+          <div className="debugger__detail">
+            <SkeletonDetail />
+          </div>
         </div>
       </div>
     );
   }
 
+  if (state.status === 'error') {
+    return (
+      <div className="card">
+        <EmptyState
+          title="Debugger unavailable"
+          description={state.error ?? 'Unable to load debugger data.'}
+          actionLabel="Back to run"
+          onAction={() => navigate(runId ? `/runs/${runId}` : '/')}
+          size="md"
+        />
+      </div>
+    );
+  }
+
   const selectedNode = selectedId ? tree.nodes.get(selectedId) : undefined;
+  const trust =
+    trustState.status === 'ready' && testId ? trustState.trustByTestId?.[testId] : undefined;
+  const ownership = state.status === 'ready' ? resolveOwnership(state.test) : undefined;
+  const governance =
+    state.status === 'ready'
+      ? computeGovernanceSignals({
+          tests: [state.test],
+          trust: trustState.status === 'ready' ? trustState.trustByTestId : undefined,
+          regressions: undefined,
+          ownership: ownership ? { [state.test.testId]: ownership } : undefined
+        })
+      : undefined;
 
   return (
     <div className="debugger">
@@ -199,11 +265,68 @@ export function DebuggerPage(): JSX.Element {
           <div className="muted" style={{ marginTop: 4 }}>
             {state.test.testId}
           </div>
+          {mode === 'live' && (
+            <div className="pill pill--skipped" style={{ display: 'inline-block', marginTop: 4 }}>
+              LIVE mode
+            </div>
+          )}
         </div>
         <div>
-          <StatusPill status={state.test.status} />
+          <StatusBadge status={state.test.status} />
+          <div style={{ marginTop: 6 }}>
+            <TrustBadge trust={trust} />
+          </div>
+          {ownership && (
+            <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+              Owner: {ownership.ownerTeam ?? '—'} · Feature: {ownership.featureArea ?? '—'} · Severity:{' '}
+              {ownership.severity ?? '—'}
+            </div>
+          )}
         </div>
       </div>
+      {mode === 'live' && newFailureNotice && (
+        <div className="card" style={{ marginTop: 8, padding: 10, borderColor: '#3a82f7' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ color: '#e6e9f0' }}>New failure detected</div>
+            <button
+              className="mode-toggle"
+              onClick={() => {
+                if (tree.failurePath.length) {
+                  setSelectedId(tree.failurePath[tree.failurePath.length - 1]);
+                  setExpanded(new Set(tree.failurePath));
+                }
+                setNewFailureNotice(null);
+                userControlUntil.current = Date.now() + 8000;
+              }}
+            >
+              View
+            </button>
+          </div>
+        </div>
+      )}
+      {trust && (
+        <div className="card" style={{ marginTop: 8, padding: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 600, color: '#e6e9f0' }}>Test trust</div>
+              <div className="muted" style={{ marginTop: 4 }}>How reliable is this test historically?</div>
+            </div>
+            <TrustBadge trust={trust} />
+          </div>
+          <TrustExplain trust={trust} />
+        </div>
+      )}
+      {governance && (
+        <div className="card" style={{ marginTop: 8, padding: 10 }}>
+          <div style={{ fontWeight: 600, color: '#e6e9f0' }}>Governance context</div>
+          <div className="muted" style={{ marginTop: 4 }}>
+            This may impact release confidence because it triggered: {governance.perTest[state.test.testId] ?? 'info'}.
+          </div>
+          <div className="muted" style={{ marginTop: 4 }}>
+            Signals consider trust, severity, regressions, and duration. Informational only; no enforcement applied.
+          </div>
+        </div>
+      )}
       <div className="debugger__body">
         <div
           className="debugger__tree"
@@ -249,7 +372,13 @@ export function DebuggerPage(): JSX.Element {
           })}
         </div>
         <div className="debugger__detail">
-          {selectedNode ? (
+          {tree.order.length === 0 ? (
+            <EmptyState
+              title="No failure details yet"
+              description="When a failure is reported, steps and evidence will land here instantly."
+              size="md"
+            />
+          ) : selectedNode ? (
             <DetailPanel node={selectedNode} test={state.test} />
           ) : (
             <div className="muted">Select a node to inspect details</div>
@@ -260,9 +389,10 @@ export function DebuggerPage(): JSX.Element {
   );
 }
 
-function buildTree(test: TestCaseResult): { nodes: Map<string, TreeNode>; order: string[] } {
+function buildTree(test: TestCaseResult): FailurePathResult {
   const nodes = new Map<string, TreeNode>();
   const order: string[] = [];
+  const failurePath: string[] = [];
 
   const addNode = (node: TreeNode) => {
     nodes.set(node.id, node);
@@ -382,29 +512,35 @@ function buildTree(test: TestCaseResult): { nodes: Map<string, TreeNode>; order:
   }
 
   // Stack frames
-  if (test.failure?.userLandFrames?.length) {
+  const userFrames =
+    test.failure?.userLandFrames?.filter(f => f.isUserLand).slice(0, 6) ??
+    [];
+  if (userFrames.length) {
     const parentId = `${test.testId}-frames`;
     addNode({
       id: parentId,
-      label: 'Stack frames',
+      label: 'Failure path',
       type: 'frame',
       depth: failureId ? 1 : 0,
-      children: test.failure.userLandFrames.map((_, idx) => `${parentId}-${idx}`),
+      children: userFrames.map((_, idx) => `${parentId}-${idx}`),
       parentId: failureId,
-      data: { frame: test.failure.userLandFrames[0] }
+      data: { frame: userFrames[0] }
     });
-    test.failure.userLandFrames.forEach((frame, idx) => {
+    userFrames.forEach((frame, idx) => {
+      const id = `${parentId}-${idx}`;
       addNode({
-        id: `${parentId}-${idx}`,
+        id,
         label: `${frame.function ?? '<anonymous>'} (${frame.file}:${frame.line ?? '?'})`,
         type: 'frame',
-        depth: (failureId ? 2 : 1),
+        depth: failureId ? 2 : 1,
         parentId,
         children: [],
         data: { frame }
       });
+      failurePath.push(id);
     });
     rootChildren.push(parentId);
+    failurePath.unshift(parentId);
   }
 
   if (failureId) {
@@ -415,7 +551,8 @@ function buildTree(test: TestCaseResult): { nodes: Map<string, TreeNode>; order:
     }
   }
 
-  return { nodes, order };
+  const autoPath = failureId ? [failureId, ...failurePath] : failurePath;
+  return { nodes, order, failurePath: autoPath };
 }
 
 function buildStepTree(
@@ -474,6 +611,143 @@ function flattenVisible(tree: { nodes: Map<string, TreeNode>; order: string[] },
   return visible;
 }
 
+function failureTimestamp(test: TestCaseResult, _failure: FailureInfo): number | undefined {
+  return test.timing?.endTime ?? test.timing?.startTime ?? Date.now();
+}
+
+function frameTimestamp(_frame: StackFrameInfo, test: TestCaseResult): number | undefined {
+  return test.timing?.endTime ?? test.timing?.startTime;
+}
+
+function EvidencePanel({
+  test,
+  anchorTimestamp,
+  windowBefore = 10_000,
+  windowAfter = 5_000
+}: {
+  test: TestCaseResult;
+  anchorTimestamp?: number;
+  windowBefore?: number;
+  windowAfter?: number;
+}): JSX.Element | null {
+  const [showAll, setShowAll] = useState(false);
+  if (!anchorTimestamp) return null;
+
+  const windowStart = anchorTimestamp - windowBefore;
+  const windowEnd = anchorTimestamp + windowAfter;
+
+  const attachments = collectAttachments(test);
+  const filteredAttachments = showAll
+    ? attachments
+    : attachments.filter(a => a.timestamp && a.timestamp >= windowStart && a.timestamp <= windowEnd);
+
+  const logs = test.consoleLogs ?? [];
+  const filteredLogs = showAll
+    ? logs
+    : logs.filter(l => l.timestamp >= windowStart && l.timestamp <= windowEnd);
+
+  const network = test.network ?? [];
+  const filteredNetwork = showAll
+    ? network
+    : network.filter(n => n.startTime >= windowStart && n.startTime <= windowEnd);
+
+  const hasEvidence = filteredAttachments.length || filteredLogs.length || filteredNetwork.length;
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h4 style={{ margin: 0 }}>Evidence Around Failure</h4>
+        <label style={{ color: '#9aa3b5', fontSize: 12 }}>
+          <input
+            type="checkbox"
+            checked={showAll}
+            onChange={e => setShowAll(e.target.checked)}
+            style={{ marginRight: 6 }}
+          />
+          Show all evidence
+        </label>
+      </div>
+      {!hasEvidence ? (
+        <div className="muted" style={{ marginTop: 6 }}>
+          No correlated evidence in the selected window.
+        </div>
+      ) : (
+        <>
+          <details open>
+            <summary>Logs ({filteredLogs.length})</summary>
+            {filteredLogs.length === 0 ? (
+              <div className="muted">No logs in window.</div>
+            ) : (
+              filteredLogs.map(log => (
+                <div key={log.id} style={{ marginTop: 6 }}>
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    {relativeTime(log.timestamp, anchorTimestamp)}
+                  </div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{log.message}</div>
+                </div>
+              ))
+            )}
+          </details>
+          <details style={{ marginTop: 8 }} open>
+            <summary>Network ({filteredNetwork.length})</summary>
+            {filteredNetwork.length === 0 ? (
+              <div className="muted">No network entries in window.</div>
+            ) : (
+              filteredNetwork.map(net => (
+                <div key={net.id} style={{ marginTop: 6 }}>
+                  <div>
+                    {net.method} {net.url} · {net.status ?? '—'}
+                  </div>
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    {relativeTime(net.startTime, anchorTimestamp)}
+                  </div>
+                </div>
+              ))
+            )}
+          </details>
+          <details style={{ marginTop: 8 }} open>
+            <summary>Artifacts ({filteredAttachments.length})</summary>
+            {filteredAttachments.length === 0 ? (
+              <div className="muted">No artifacts in window.</div>
+            ) : (
+              filteredAttachments.map(att => (
+                <div key={att.id} style={{ marginTop: 6 }}>
+                  <div>{att.description || att.type}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    {relativeTime(att.timestamp ?? anchorTimestamp, anchorTimestamp)}
+                  </div>
+                  <div>
+                    <a href={`/${att.path}`} target="_blank" rel="noreferrer">
+                      Open
+                    </a>
+                  </div>
+                </div>
+              ))
+            )}
+          </details>
+        </>
+      )}
+    </div>
+  );
+}
+
+function collectAttachments(test: TestCaseResult): Array<AttachmentInfo & { timestamp?: number }> {
+  const root = (test.attachments ?? []).map(att => ({ ...att }));
+  const stepAttachments = test.steps.flatMap(step =>
+    (step.attachments ?? []).map(att => ({
+      ...att,
+      timestamp: att.timestamp ?? step.timing.endTime ?? step.timing.startTime
+    }))
+  );
+  return [...root, ...stepAttachments];
+}
+
+function relativeTime(ts: number, anchor: number): string {
+  const deltaMs = ts - anchor;
+  const seconds = deltaMs / 1000;
+  const label = seconds.toFixed(1) + 's';
+  return seconds === 0 ? '0.0s' : seconds > 0 ? `+${label}` : label;
+}
 function DetailPanel({ node, test }: { node: TreeNode; test: TestCaseResult }): JSX.Element {
   switch (node.type) {
     case 'failure': {
@@ -493,6 +767,7 @@ function DetailPanel({ node, test }: { node: TreeNode; test: TestCaseResult }): 
               <pre className="stacktrace">{failure.stacktrace}</pre>
             </details>
           )}
+          <EvidencePanel test={test} anchorTimestamp={failureTimestamp(test, failure)} />
         </div>
       );
     }
@@ -502,7 +777,17 @@ function DetailPanel({ node, test }: { node: TreeNode; test: TestCaseResult }): 
         <div>
           <h3>Step</h3>
           <div style={{ marginBottom: 6 }}>{step.title}</div>
-          <StatusPill status={step.status === 'failed' ? 'failed' : step.status === 'passed' ? 'passed' : 'skipped'} />
+          <StatusBadge
+            status={
+              step.status === 'failed'
+                ? 'failed'
+                : step.status === 'passed'
+                  ? 'passed'
+                  : step.status === 'running'
+                    ? 'running'
+                    : 'skipped'
+            }
+          />
           <div className="muted" style={{ marginTop: 6 }}>
             Duration: {formatDuration(step.timing.durationMs ?? 0)}
           </div>
@@ -517,6 +802,9 @@ function DetailPanel({ node, test }: { node: TreeNode; test: TestCaseResult }): 
               <div style={{ whiteSpace: 'pre-wrap' }}>{step.failure.message}</div>
             </div>
           )}
+          <div style={{ marginTop: 12 }}>
+            <EvidencePanel test={test} anchorTimestamp={step.timing.endTime ?? step.timing.startTime} />
+          </div>
         </div>
       );
     }
@@ -531,6 +819,7 @@ function DetailPanel({ node, test }: { node: TreeNode; test: TestCaseResult }): 
           <div style={{ marginTop: 8 }}>
             <CodeViewer filePath={frame.file} highlightLine={frame.line} flashKey={`${node.id}-${frame.line}`} />
           </div>
+          <EvidencePanel test={test} anchorTimestamp={frameTimestamp(frame, test)} />
         </div>
       );
     }

@@ -10,6 +10,11 @@ export interface RunSummaryItem {
   createdAt?: number;
 }
 
+export interface WorkspaceInfo {
+  path: string;
+  name: string;
+}
+
 const defaultHeaders = {
   Accept: 'application/json'
 };
@@ -22,10 +27,13 @@ async function handleJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-export async function getRuns(): Promise<RunSummaryItem[]> {
+export async function getRuns(): Promise<{ runs: RunSummaryItem[]; workspace?: WorkspaceInfo }> {
   const res = await fetch('/api/runs', { headers: defaultHeaders });
-  const data = await handleJson<{ runs: RunSummaryItem[] }>(res);
-  return data.runs ?? [];
+  const data = await handleJson<{ runs: RunSummaryItem[]; workspace?: WorkspaceInfo }>(res);
+  return {
+    runs: data.runs ?? [],
+    workspace: data.workspace
+  };
 }
 
 export async function getRun(runId: string): Promise<TestRun> {

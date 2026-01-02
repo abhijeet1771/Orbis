@@ -1,49 +1,91 @@
 # OrbisReport
 
-OrbisReport is a next-generation test execution intelligence platform for Playwright. It is designed to plug into existing Playwright frameworks as a drop-in reporter—similar to how Allure integrates—while providing both static and future live reporting capabilities.
+## What is Orbis?
+OrbisReport is a test execution intelligence layer for Playwright. It turns raw runs into an Executive Overview for managers, a developer-grade Debugger with evidence correlation, and live progress visibility—without changing how you write tests. It installs as a drop-in reporter; no meetings, training, or migrations required.
 
-## Monorepo layout
+## Why Orbis vs Allure / Raw CI logs
+| | OrbisReport | Allure | Raw CI logs |
+|---|---|---|---|
+| Drop-in Playwright setup | ✔ one-line | ✔ config | ✖ parsing |
+| Manager-ready overview | ✔ | △ plugins | ✖ |
+| Live mode (SSE) | ✔ | △ | ✖ |
+| Failure path + evidence correlation | ✔ | △ | ✖ |
+| Trust / Regressions / Release readiness | ✔ | ✖ | ✖ |
+| Zero-DB static hosting | ✔ | ✔ | ✔ |
 
-- `packages/reporter`: Playwright reporter SDK (no UI, no DB).
-- `packages/core`: Shared data models, normalization, and failure intelligence utilities.
-- `packages/server`: Static and (future) live server surface; handles filesystem/DB access.
-- `packages/ui`: React + Vite frontend for static and live experiences.
-- `.orbisreport`: Runtime output (ignored by git) for runs, attachments, and SQLite DB.
+## Quick Start (Golden Path)
+- Install: `pnpm install`
+- Enable reporter (one line) in `playwright.config.ts`:
+  ```ts
+  reporter: [['@orbisreport/reporter', { outputDir: '.orbisreport' }]];
+  ```
+- Run tests: `npx playwright test`
+- Open report: `npx orbis open` (URL printed)
 
-## Getting started
+## Static vs Live Mode
+- **Static**: After a run finishes; great for CI artifacts and manager reviews.
+- **Live**: During long suites; see progress, failures, and evidence in real time with `npx orbis live`.
 
-Prerequisites: Node.js >= 18 and pnpm.
+## Executive Overview (what managers see & why)
+Release Readiness score, change since last run, risk hotspots, and proof links—designed to answer “Can we ship?” in under a minute.
 
-```bash
-pnpm install
-pnpm build
-pnpm --filter @orbisreport/ui dev
-```
+## Debugger (failure path, code, evidence)
+Auto-focused failure path, inline code snippets, correlated logs/network/artifacts, and trust indicators so developers land on root cause fast.
 
-This foundation intentionally omits reporter logic, UI screens, database setup, and live mode. Future steps will layer those in.
+## Trust, Regressions, Release Readiness (plain English)
+- **Trust**: Per-test reliability from history (flakiness, streaks, recency).
+- **Regressions**: New failures/flakies/perf regressions vs previous run, severity-tagged.
+- **Release Readiness**: Blends pass rate, regressions, flaky concentration, and high-trust failures into GO / GO WITH RISK / NO-GO with rationale.
 
-## CLI usage (static and live)
+## CLI Reference
+- `npx orbis open` — Serve latest static report (auto-picks port)
+- `npx orbis open --run <id>` — Serve and deep-link to a specific run
+- `npx orbis live` — Serve UI + /live SSE endpoints for streaming runs
+- `npx orbis doctor` — Check UI build, `.orbisreport` presence, and port availability
+- Env: `ORBIS_PORT` preferred port (auto-increments if busy)
 
-- Static report server: `npx orbis open` (serves `/api/runs` + UI)
-- Live server (with SSE): `npx orbis live`
-- Port override: `ORBIS_PORT=5000 npx orbis open`
+## CI / Jenkins Usage
+- Run Playwright with the Orbis reporter; archive `.orbisreport` as an artifact.
+- Static publish: `npx orbis open --port 4173` (or host `packages/ui/dist`).
+- Live in CI: run `npx orbis live` while tests execute (SSE at `/live`).
 
-If `packages/ui/dist` is missing, build UI first: `pnpm --filter @orbisreport/ui build`.
+## FAQ / Common Issues
+- **UI blank/404**: Build UI: `pnpm --filter @orbisreport/ui build`.
+- **Port in use**: Set `ORBIS_PORT` or `--port`; Orbis will try the next few.
+- **“No runs found”**: Ensure `.orbisreport/runs` exists; rerun tests with the reporter.
+- **Slow load**: Serve from local disk/CI artifact; no DB needed.
 
-## Playwright integration
+## Roadmap (short, confident)
+- Exportable PDF/briefing packs for managers.
+- Deeper IDE jump links and source previews.
+- More CI integrations and zero-config live tunnels.
 
-Playwright config:
+## Golden Path (copy-paste)
 ```ts
-reporter: [
-  ['@orbisreport/reporter', { live: true }]
-]
+// playwright.config.ts
+reporter: [['@orbisreport/reporter', { outputDir: '.orbisreport' }]];
 ```
+```bash
+npx playwright test
+npx orbis open
+# Live streaming (optional)
+npx orbis live
+```
+What you’ll see:
+- Executive Overview: release readiness, change vs last run.
+- Execution Index: filters, trust, regression badges for triage.
+- Debugger: failure path + evidence.
+- Live Mode: progress, running tests, recent events.
 
-After `playwright test`, archive `.orbisreport` as the CI artifact (Jenkins/GHA). For live mode, keep the `orbis live` server running during execution; UI will display streaming updates via `/live`.
+## Screens (placeholders)
+![Executive Overview](./docs/executive-overview.png "Executive Overview — answers 'Can we ship?' with readiness, change, and hotspots")
+![Execution Index](./docs/execution-index.png "Execution Index — fast triage with filters, trust, regression badges")
+![Debugger](./docs/debugger.png "Debugger — failure path, inline code, and evidence around the failure moment")
+![Live Mode](./docs/live-mode.png "Live Mode — progress, what’s running, and what just happened")
 
-## CI/Jenkins notes
-
-- No absolute paths are written to JSON outputs; artifacts live under `.orbisreport/attachments`.
-- Static HTML/JSON can be published directly as build artifacts.
-- `ORBIS_PORT` configurable for CI runners; no auth/certs required initially.
+## Internal Adoption: how teams typically roll out Orbis
+1) Start with one project using the one-line reporter config.  
+2) Share the Executive Overview with managers on the next run.  
+3) Wire into CI to publish `.orbisreport` and host via `orbis open`.  
+4) Make Orbis the default reporter across projects once trust builds.  
 

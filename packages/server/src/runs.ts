@@ -5,6 +5,8 @@ import {
   TestRun,
   coreVersion
 } from '@orbisreport/core';
+import { getOrbisHome } from './workspace.js';
+import { normalizeRun } from './normalize.js';
 
 const ORBIS_ROOT = '.orbisreport';
 const RUNS_DIR = path.join(ORBIS_ROOT, 'runs');
@@ -32,8 +34,8 @@ interface RunIndexFile {
   runs: RunIndexEntry[];
 }
 
-export async function listRuns(rootDir = process.cwd()): Promise<RunListItem[]> {
-  const indexPath = path.join(rootDir, INDEX_FILE);
+export async function listRuns(workspaceDir: string, projectHash: string): Promise<RunListItem[]> {
+  const { indexPath, runRoot } = await resolveRunStorage(workspaceDir, projectHash);
   let index: RunIndexFile = { runs: [] };
 
   try {
@@ -46,7 +48,7 @@ export async function listRuns(rootDir = process.cwd()): Promise<RunListItem[]> 
   const results: RunListItem[] = [];
 
   for (const entry of index.runs ?? []) {
-    const run = await safeLoadRun(entry.runId, rootDir).catch(() => undefined);
+  const run = await safeLoadRun(entry.runId, runRoot).catch(() => undefined);
     results.push({
       runId: entry.runId,
       schemaVersion: entry.schemaVersion,
@@ -61,17 +63,22 @@ export async function listRuns(rootDir = process.cwd()): Promise<RunListItem[]> 
   return results;
 }
 
-export async function loadRun(runId: string, rootDir = process.cwd()): Promise<TestRun> {
+export async function loadRun(
+  runId: string,
+  workspaceDir: string,
+  projectHash: string
+): Promise<TestRun> {
   validateRunId(runId);
-  const run = await safeLoadRun(runId, rootDir);
+  const { runRoot } = await resolveRunStorage(workspaceDir, projectHash);
+  const run = await safeLoadRun(runId, runRoot);
   if (!run) {
     throw new Error(`Run ${runId} not found`);
   }
-  return run;
+  return normalizeRun(run);
 }
 
-async function safeLoadRun(runId: string, rootDir: string): Promise<TestRun | undefined> {
-  const runPath = resolveRunPath(runId, rootDir);
+async function safeLoadRun(runId: string, runRoot: string): Promise<TestRun | undefined> {
+  const runPath = resolveRunPath(runId, runRoot);
   const contents = await fs.readFile(runPath, 'utf-8').catch(() => undefined);
   if (!contents) return undefined;
 
@@ -81,14 +88,14 @@ async function safeLoadRun(runId: string, rootDir: string): Promise<TestRun | un
       `Unsupported schemaVersion ${run.schemaVersion}; expected ${SUPPORTED_SCHEMA_VERSION}`
     );
   }
-  return run;
+  return normalizeRun(run);
 }
 
-function resolveRunPath(runId: string, rootDir: string): string {
+function resolveRunPath(runId: string, runRoot: string): string {
   const fileName = `run-${runId}.json`;
-  const runPath = path.join(rootDir, RUNS_DIR, fileName);
+  const runPath = path.join(runRoot, fileName);
   const normalized = path.normalize(runPath);
-  const allowedRoot = path.normalize(path.join(rootDir, RUNS_DIR));
+  const allowedRoot = path.normalize(runRoot);
   if (!normalized.startsWith(allowedRoot)) {
     throw new Error('Invalid run path');
   }
@@ -111,6 +118,29 @@ function emptySummary(): RunSummary {
     timedOut: 0,
     durationMs: 0
   };
+}
+
+async function resolveRunStorage(
+  workspaceDir: string,
+  projectHash: string
+): Promise<{ runRoot: string; indexPath: string }> {
+  const workspaceRunsRoot = path.join(workspaceDir, RUNS_DIR);
+  const workspaceIndex = path.join(workspaceDir, INDEX_FILE);
+  const home = await getOrbisHome();
+  const homeRunRoot = path.join(home, 'runs', projectHash);
+  const homeIndex = path.join(homeRunRoot, 'index.json');
+
+  const workspaceExists = await fs
+    .stat(workspaceRunsRoot)
+    .then(s => s.isDirectory())
+    .catch(() => false);
+
+  if (workspaceExists) {
+    return { runRoot: workspaceRunsRoot, indexPath: workspaceIndex };
+  }
+
+  await fs.mkdir(homeRunRoot, { recursive: true });
+  return { runRoot: homeRunRoot, indexPath: homeIndex };
 }
 
 export function getSupportedSchemaVersion(): string {

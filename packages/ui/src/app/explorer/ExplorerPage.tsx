@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import type { TestRun, TestCaseResult, TestStatus } from '@orbisreport/core';
 import { useRunData } from '../data/useRunData';
+import { EmptyState } from '../../common/empty/EmptyState';
+import { SkeletonTree, SkeletonDetail, SkeletonLine } from '../../common/skeleton';
+import { StatusLabel } from '../../common/status/StatusLabel';
+import { StatusBadge } from '../../common/status/StatusBadge';
+import { useTrustIndex } from '../data/useTrustIndex';
+import { useRegression } from '../data/useRegression';
+import type { RegressionEntry } from '../../common/regression/regression';
 import './explorer.css';
 import { formatDuration } from '../util/format';
-import { StatusPill } from '../shared/StatusPill';
+import { resolveOwnership, pickHigherSeverity, type OwnershipInfo } from '../../common/ownership/ownership';
 
 type LoadState =
   | { status: 'idle' }
@@ -22,6 +29,9 @@ interface ExplorerNodeBase {
   children: string[];
   depth: number;
   status: AggregatedStatus;
+  hasRegression?: boolean;
+  ownership?: OwnershipInfo;
+  highestSeverity?: string;
 }
 
 type ExplorerNode =
@@ -41,15 +51,26 @@ interface AggregatedStatus {
 
 export function ExplorerPage(): JSX.Element {
   const { runId } = useParams<{ runId: string }>();
+  const navigate = useNavigate();
   const runState = useRunData(runId);
+  const trustState = useTrustIndex(runId);
   const [state, setState] = useState<LoadState>({ status: 'idle' });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const treeRef = useRef<HTMLDivElement | null>(null);
+  const [search, setSearch] = useState('');
+
+  const trustByTestId = trustState.status === 'ready' ? trustState.trustByTestId : undefined;
+  const regressionState = useRegression(runId, runState.run, trustByTestId);
 
   useEffect(() => {
     if (!runId) return;
-    if (runState.status === 'loading' || runState.status === 'idle') {
+    if (
+      runState.status === 'loading' ||
+      runState.status === 'idle' ||
+      trustState.status === 'loading' ||
+      regressionState.status === 'loading'
+    ) {
       setState({ status: 'loading' });
       return;
     }
@@ -57,20 +78,25 @@ export function ExplorerPage(): JSX.Element {
       setState({ status: 'error', error: runState.error ?? 'Failed to load run' });
       return;
     }
+    if (regressionState.status === 'error') {
+      setState({ status: 'error', error: regressionState.error });
+      return;
+    }
     const run = runState.run;
     if (!run) return;
-    const tree = buildTree(run);
+    const regs = regressionState.status === 'ready' ? regressionState.data.byTestId : undefined;
+    const tree = buildTree(run, regs);
     const autoExpanded = defaultExpanded(tree);
     setExpanded(autoExpanded);
     setSelectedId(tree.roots[0]);
     setState({ status: 'ready', run, tree });
     queueMicrotask(() => treeRef.current?.focus());
-  }, [runId, runState]);
+  }, [runId, runState, trustState.status, regressionState]);
 
   const visible = useMemo(() => {
     if (state.status !== 'ready') return [];
-    return flatten(state.tree, expanded);
-  }, [state, expanded]);
+    return flatten(state.tree, expanded, search);
+  }, [state, expanded, search]);
 
   const handleKey = useCallback(
     (e: React.KeyboardEvent) => {
@@ -122,6 +148,34 @@ export function ExplorerPage(): JSX.Element {
     );
   }
 
+  if (state.status === 'loading' || state.status === 'idle') {
+    return (
+      <div className="explorer">
+        <div className="explorer__header">
+          <SkeletonLine width="40%" />
+        </div>
+        <div className="explorer__body">
+          <div className="explorer__tree">
+            <SkeletonTree rows={10} />
+          </div>
+          <div className="explorer__detail">
+            <SkeletonDetail />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.status === 'ready' && state.tree.roots.length === 0) {
+    return (
+      <EmptyState
+        title="No suites or tests mapped yet"
+        description="Once suites execute, they will be organized here by folder and file."
+        size="md"
+      />
+    );
+  }
+
   const selected = selectedId ? state.tree.nodes.get(selectedId) : undefined;
 
   return (
@@ -137,23 +191,32 @@ export function ExplorerPage(): JSX.Element {
         </div>
       </div>
       <div className="explorer__body">
-        <div
-          className="explorer__tree"
-          tabIndex={0}
-          onKeyDown={handleKey}
-          ref={treeRef}
-          aria-label="Suite explorer"
-        >
+        <div className="explorer__tree-search">
+          <input
+            placeholder="Search suites, files, tests"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="explorer__tree" tabIndex={0} onKeyDown={handleKey} ref={treeRef} aria-label="Suite explorer">
           {visible.map(node => {
             const isSelected = node.id === selectedId;
             const isExpanded = expanded.has(node.id);
             const hasChildren = node.children.length > 0;
+            const failCount = node.status.counts.failed + node.status.counts.timedOut;
+            const flakyCount = node.status.counts.flaky;
             return (
               <div
                 key={node.id}
                 className={`explorer__node ${isSelected ? 'explorer__node--selected' : ''}`}
                 style={{ paddingLeft: node.depth * 14 }}
-                onClick={() => setSelectedId(node.id)}
+                onClick={() => {
+                  if (node.type === 'test') {
+                    navigate(`/runs/${runId}/tests/${(node as any).test.testId}/debugger`);
+                  } else {
+                    setSelectedId(node.id);
+                  }
+                }}
               >
                 {hasChildren ? (
                   <button
@@ -173,7 +236,20 @@ export function ExplorerPage(): JSX.Element {
                 )}
                 <span className={`explorer__icon explorer__icon--${node.type}`} />
                 <span>{node.name}</span>
-                <span className="explorer__status">{statusLabel(node.status.worst)}</span>
+                {node.hasRegression && <span className="pill" style={{ borderColor: '#f6c659', marginLeft: 6 }}>regression</span>}
+                {node.highestSeverity && (
+                  <span className="pill" style={{ borderColor: '#7ab1ec', marginLeft: 6 }}>
+                    {node.highestSeverity}
+                  </span>
+                )}
+              <span className="explorer__status">
+                <StatusLabel status={node.status.worst} />
+              </span>
+              {(failCount > 0 || flakyCount > 0) && (
+                <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>
+                  {failCount > 0 ? `F:${failCount}` : ''} {flakyCount > 0 ? `Fl:${flakyCount}` : ''}
+                </span>
+              )}
               </div>
             );
           })}
@@ -202,34 +278,25 @@ function Detail({ node, runId, tree }: { node: ExplorerNode; runId: string; tree
           <Stat label="Flaky" value={summary.flaky} />
           <Stat label="Skipped" value={summary.skipped} />
         </div>
+        <div style={{ marginTop: 10 }}>
+          <Link to={`/runs/${runId}/index`}>Open in Execution Index</Link>
+        </div>
         {node.type === 'file' && (
-          <div className="card" style={{ marginTop: 12, padding: 0 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Test</th>
-                  <th>Status</th>
-                  <th>Duration</th>
-                  <th>Links</th>
-                </tr>
-              </thead>
-              <tbody>
-                {descendants.map(d => (
-                  <tr key={d.test.testId}>
-                    <td>{d.test.title}</td>
-                    <td>
-                      <StatusPill status={d.test.status} />
-                    </td>
-                    <td>{formatDuration(d.test.timing.durationMs ?? 0)}</td>
-                    <td>
-                      <Link to={`/runs/${runId}/tests/${d.test.testId}/debugger`}>Debugger</Link>
-                      {' · '}
-                      <Link to={`/tests/${d.test.testId}/history`}>History</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="card" style={{ marginTop: 12, padding: 12 }}>
+            {descendants.map(d => (
+              <div key={d.test.testId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{d.test.title}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{d.test.testId}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <StatusBadge status={d.test.status} />
+                  <div className="muted">{formatDuration(d.test.timing.durationMs ?? 0)}</div>
+                  <Link to={`/runs/${runId}/tests/${d.test.testId}/debugger`}>Debugger</Link>
+                  <Link to={`/tests/${d.test.testId}/history`}>History</Link>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -243,7 +310,7 @@ function Detail({ node, runId, tree }: { node: ExplorerNode; runId: string; tree
         <h3>{test.title}</h3>
         <div className="muted">{test.testId}</div>
         <div style={{ marginTop: 8 }}>
-          <StatusPill status={test.status} />
+          <StatusBadge status={test.status} />
         </div>
         <div className="muted" style={{ marginTop: 8 }}>
           Duration: {formatDuration(test.timing.durationMs ?? 0)}
@@ -260,7 +327,7 @@ function Detail({ node, runId, tree }: { node: ExplorerNode; runId: string; tree
   return <div className="muted">Select a node</div>;
 }
 
-function buildTree(run: TestRun): ExplorerTree {
+function buildTree(run: TestRun, regressions?: Record<string, RegressionEntry>): ExplorerTree {
   const nodes = new Map<string, ExplorerNode>();
   const roots: string[] = [];
 
@@ -274,7 +341,8 @@ function buildTree(run: TestRun): ExplorerTree {
         parentId,
         children: [],
         depth,
-        status: emptyStatus()
+        status: emptyStatus(),
+        hasRegression: false
       };
       nodes.set(id, node);
       if (!parentId) roots.push(id);
@@ -305,13 +373,16 @@ function buildTree(run: TestRun): ExplorerTree {
         parentId: parentId,
         children: [],
         depth,
-        status: emptyStatus()
+        status: emptyStatus(),
+        hasRegression: false
       };
       nodes.set(fileId, fileNode);
       (parentId ? nodes.get(parentId) : undefined)?.children.push(fileId);
       if (!parentId) roots.push(fileId);
     }
     const testId = `${fileId}::${test.testId}`;
+    const reg = regressions?.[test.testId];
+    const ownership = resolveOwnership(test);
     const testNode: ExplorerNode = {
       id: testId,
       name: test.title,
@@ -324,7 +395,10 @@ function buildTree(run: TestRun): ExplorerTree {
       status: {
         worst: test.status,
         counts: singleStatus(test.status)
-      }
+      },
+      hasRegression: Boolean(reg),
+      ownership,
+      highestSeverity: ownership.severity
     };
     nodes.set(testId, testNode);
     nodes.get(fileId)?.children.push(testId);
@@ -337,6 +411,10 @@ function buildTree(run: TestRun): ExplorerTree {
     const childNodes = node.children.map(id => nodes.get(id)!).filter(Boolean);
     const agg = aggregate(childNodes.map(c => c.status));
     node.status = agg;
+    node.hasRegression = childNodes.some(c => c.hasRegression);
+    node.highestSeverity = childNodes.reduce<string | undefined>((acc, c) => {
+      return pickHigherSeverity(acc as any, c.highestSeverity as any);
+    }, undefined);
   }
 
   return { nodes, roots };
@@ -385,14 +463,28 @@ function worse(a: TestStatus, b: TestStatus): TestStatus {
   return order.indexOf(b) > order.indexOf(a) ? b : a;
 }
 
-function flatten(tree: ExplorerTree, expanded: Set<string>): ExplorerNode[] {
+function flatten(tree: ExplorerTree, expanded: Set<string>, search: string): ExplorerNode[] {
   const result: ExplorerNode[] = [];
+  const term = search.trim().toLowerCase();
   const walk = (id: string) => {
     const node = tree.nodes.get(id);
     if (!node) return;
-    result.push(node);
-    if (node.children.length && expanded.has(id)) {
+    const matches =
+      !term ||
+      node.name.toLowerCase().includes(term) ||
+      (node.type === 'test' && node.test.title.toLowerCase().includes(term));
+    if (matches) {
+      result.push(node);
+      if (node.children.length && expanded.has(id)) {
+        node.children.forEach(childId => walk(childId));
+      }
+    } else if (node.children.length && expanded.has(id)) {
+      const before = result.length;
       node.children.forEach(childId => walk(childId));
+      const after = result.length;
+      if (after > before) {
+        result.push(node);
+      }
     }
   };
   tree.roots.forEach(r => walk(r));

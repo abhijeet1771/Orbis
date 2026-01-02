@@ -8,6 +8,12 @@ importers:
 
   .:
     devDependencies:
+      '@orbisreport/server':
+        specifier: workspace:*
+        version: link:packages/server
+      '@playwright/test':
+        specifier: ^1.40.0
+        version: 1.57.0
       '@types/node':
         specifier: ^20.10.6
         version: 20.19.27

@@ -11,6 +11,10 @@
   font-size: 12px;
   color: #9aa3b5;
   border-bottom: 1px solid #1f2533;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
 .codeviewer__pre {
@@ -18,12 +22,14 @@
   padding: 8px 0;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 12px;
+  overflow: auto;
 }
 
 .codeviewer__line {
   display: grid;
   grid-template-columns: 50px 1fr;
   padding: 0 10px;
+  white-space: pre;
 }
 
 .codeviewer__line--highlight {
@@ -43,5 +49,20 @@
 
 .codeviewer__code {
   white-space: pre-wrap;
+}
+
+.codeviewer__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.codeviewer__btn {
+  background: #0b0d12;
+  color: #e6e9f0;
+  border: 1px solid #1f2533;
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
 }
 
