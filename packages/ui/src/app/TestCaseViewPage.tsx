@@ -11,7 +11,7 @@
  * 5. What should I do next?
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { TestRun, TestCaseResult } from '@orbisreport/core';
 import { useRunData } from './data/useRunData';
@@ -39,7 +39,6 @@ export function TestCaseViewPage(): JSX.Element {
   const trustState = useTrustIndex(runId);
   const [state, setState] = useState<LoadState>({ status: 'idle' });
   const [showHistory, setShowHistory] = useState(false);
-  const [activeArtifact, setActiveArtifact] = useState<'screenshot' | 'video' | 'trace' | 'logs'>('screenshot');
 
   useEffect(() => {
     if (runState.status === 'ready' && runState.run && testId) {
@@ -74,11 +73,7 @@ export function TestCaseViewPage(): JSX.Element {
           setShowHistory(prev => !prev);
           break;
         case 'a':
-          // Cycle through artifacts
-          const artifacts = ['screenshot', 'video', 'trace', 'logs'] as const;
-          const currentIndex = artifacts.indexOf(activeArtifact);
-          const nextIndex = (currentIndex + 1) % artifacts.length;
-          setActiveArtifact(artifacts[nextIndex]);
+          // Handled by EvidencePanel
           break;
         case 'Escape':
           navigate(`/runs/${runId}/index`);
@@ -88,7 +83,7 @@ export function TestCaseViewPage(): JSX.Element {
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [state.status, runId, testId, navigate, activeArtifact]);
+  }, [state.status, runId, testId, navigate]);
 
   if (state.status === 'loading' || state.status === 'idle') {
     return (
@@ -183,19 +178,12 @@ export function TestCaseViewPage(): JSX.Element {
               <div className="test-case-view__failure-message">
                 {test.failure.message}
               </div>
-              {test.failure.userLandFrames && test.failure.userLandFrames.length > 0 && (
-                <div className="test-case-view__failure-frame">
-                  <div className="test-case-view__failure-location">
-                    {test.failure.userLandFrames[0].file}:{test.failure.userLandFrames[0].line}
-                  </div>
-                  <button
-                    className="test-case-view__failure-link"
-                    onClick={() => navigate(`/runs/${runId}/tests/${testId}/debugger`)}
-                  >
-                    View in debugger →
-                  </button>
-                </div>
-              )}
+              <button
+                className="test-case-view__failure-link"
+                onClick={() => navigate(`/runs/${runId}/tests/${testId}/debugger`)}
+              >
+                View in debugger →
+              </button>
             </div>
           ) : (
             <div className="test-case-view__success">
@@ -204,22 +192,43 @@ export function TestCaseViewPage(): JSX.Element {
           )}
         </div>
 
-        <div className="test-case-view__artifacts">
-          <div className="test-case-view__artifact-tabs">
-            {(['screenshot', 'video', 'trace', 'logs'] as const).map(artifact => (
-              <button
-                key={artifact}
-                className={`test-case-view__artifact-tab ${
-                  activeArtifact === artifact ? 'test-case-view__artifact-tab--active' : ''
-                }`}
-                onClick={() => setActiveArtifact(artifact)}
-              >
-                {artifact}
-              </button>
-            ))}
+        <div className="evidence-panel">
+          <div className="evidence-panel__header">
+            <div className="evidence-panel__title">Evidence collected</div>
+            <div className="evidence-panel__count">
+              {test.attachments?.length || 0} item{(test.attachments?.length || 0) !== 1 ? 's' : ''}
+            </div>
           </div>
-          <div className="test-case-view__artifact-content">
-            {renderArtifact(test, activeArtifact)}
+
+          <div className="evidence-panel__cards">
+            {test.attachments?.slice(0, 3).map((attachment, index) => (
+              <div key={attachment.id} className="evidence-card">
+                <div className="evidence-card__header">
+                  <div className="evidence-card__type">
+                    {attachment.type.charAt(0).toUpperCase() + attachment.type.slice(1)}
+                  </div>
+                  <div className="evidence-card__time">at failure</div>
+                </div>
+                <div className="evidence-card__label">
+                  {attachment.description || `${attachment.type} file`}
+                </div>
+                <div className="evidence-card__preview">
+                  <div className="evidence-preview">
+                    {attachment.type === 'screenshot' && (
+                      <img src={`/${attachment.path}`} alt="Screenshot" style={{ maxWidth: '100%', maxHeight: '200px' }} />
+                    )}
+                    {attachment.type === 'video' && (
+                      <video controls style={{ maxWidth: '100%', maxHeight: '200px' }}>
+                        <source src={`/${attachment.path}`} />
+                      </video>
+                    )}
+                    {attachment.type !== 'screenshot' && attachment.type !== 'video' && (
+                      <div>Preview not available</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -249,15 +258,6 @@ export function TestCaseViewPage(): JSX.Element {
               </div>
             </div>
           ))}
-
-          <div className="test-case-view__timeline-event">
-            <div className="test-case-view__timeline-time">
-              {formatDateTime(test.timing.endTime ?? test.timing.startTime + (test.timing.durationMs ?? 0))}
-            </div>
-            <div className="test-case-view__timeline-description">
-              Test {test.status === 'passed' ? 'completed successfully' : 'failed'}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -310,50 +310,4 @@ function findTest(run: TestRun, testId: string): TestCaseResult | undefined {
     if (found) return found;
   }
   return undefined;
-}
-
-function renderArtifact(test: TestCaseResult, artifactType: 'screenshot' | 'video' | 'trace' | 'logs'): JSX.Element {
-  // Find the relevant artifact
-  const artifact = test.attachments?.find(att => att.type === artifactType);
-
-  if (!artifact) {
-    return (
-      <div className="test-case-view__artifact-empty">
-        No {artifactType} available for this test.
-      </div>
-    );
-  }
-
-  switch (artifactType) {
-    case 'screenshot':
-      return (
-        <div className="test-case-view__artifact-image">
-          <img src={`/${artifact.path}`} alt="Test screenshot" />
-        </div>
-      );
-    case 'video':
-      return (
-        <div className="test-case-view__artifact-video">
-          <video controls src={`/${artifact.path}`} />
-        </div>
-      );
-    case 'trace':
-      return (
-        <div className="test-case-view__artifact-trace">
-          <a href={`/${artifact.path}`} target="_blank" rel="noopener noreferrer">
-            Download trace file
-          </a>
-        </div>
-      );
-    case 'logs':
-      return (
-        <div className="test-case-view__artifact-logs">
-          <a href={`/${artifact.path}`} target="_blank" rel="noopener noreferrer">
-            View logs
-          </a>
-        </div>
-      );
-    default:
-      return <div>Unknown artifact type</div>;
-  }
 }
