@@ -7,7 +7,6 @@ import type {
   } from '@playwright/test/reporter';
   import { promises as fs } from 'node:fs';
   import path from 'node:path';
-import path from 'node:path';
   import { randomUUID, createHash } from 'node:crypto';
   import process from 'node:process';
   import os from 'node:os';

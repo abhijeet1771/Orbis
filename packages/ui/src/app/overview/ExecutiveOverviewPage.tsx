@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { TestRun, TestCaseResult, TestStatus } from '@orbisreport/core';
-import { getRuns, RunSummaryItem, getRun as getRunStatic } from '../api/client';
-import { useRunData } from '../data/useRunData';
-import { formatDateTime, formatDuration } from '../util/format';
+import { getRuns, RunSummaryItem, getRun as getRunStatic } from '../api/client.js';
+import { useRunData } from '../data/useRunData.js';
+import { formatDateTime, formatDuration } from '../util/format.js';
 import './overview.css';
-import { SkeletonBlock, SkeletonLine } from '../../common/skeleton';
-import { StatusBadge } from '../../common/status/StatusBadge';
-import { useTrustIndex } from '../data/useTrustIndex';
-import { computeRegressions } from '../../common/regression/regression';
-import { TrustBadge } from '../../common/trust/TrustBadge';
-import { computeReleaseReadiness } from '../../common/readiness/releaseReadiness';
-import { resolveOwnership } from '../../common/ownership/ownership';
-import { computeGovernanceSignals } from '../../common/governance/governance';
-import { buildDecisionTrace } from '../../common/trace/decisionTrace';
+import { SkeletonBlock, SkeletonLine } from '../../common/skeleton/index.js';
+import { StatusBadge } from '../../common/status/StatusBadge.js';
+import { useTrustIndex } from '../data/useTrustIndex.js';
+import { computeRegressions } from '../../common/regression/regression.js';
+import { TrustBadge } from '../../common/trust/TrustBadge.js';
+import { computeReleaseReadiness } from '../../common/readiness/releaseReadiness.js';
+import { resolveOwnership } from '../../common/ownership/ownership.js';
+import { computeGovernanceSignals } from '../../common/governance/governance.js';
+import { buildDecisionTrace } from '../../common/trace/decisionTrace.js';
 
 type LoadState =
   | { status: 'idle' }
@@ -58,7 +58,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
         setState({ status: 'ready', current, previous });
       } catch (err) {
         console.error('[DEBUG] Error in overview loading:', err);
-        setState({ status: 'error', error: err.message });
+        setState({ status: 'error', error: err instanceof Error ? err.message : 'Failed to load overview' });
       }
     })();
   }, [runId, runState]);
@@ -133,29 +133,19 @@ export function ExecutiveOverviewPage(): JSX.Element {
       areas: Array.from(areas)
     };
   })();
-  const governance = useMemo(
-    () =>
-      computeGovernanceSignals({
-        tests: current.projects.flatMap(p => p.tests),
-        trust: trustByTestId,
-        regressions: regressions?.byTestId,
-        ownership: undefined
-      }),
-    [current, trustByTestId, regressions]
-  );
-  const decisionTrace = useMemo(
-    () =>
-      buildDecisionTrace({
-        run: current,
-        governance,
-        trust: trustByTestId,
-        regressions: regressions?.byTestId,
-        ownership: undefined,
-        confidence: readiness.score,
-        decisionLabel: readiness.label as 'GO' | 'GO WITH RISK' | 'NO-GO'
-      }),
-    [current, governance, trustByTestId, regressions, readiness.score, readiness.label]
-  );
+  // Temporarily disable governance useMemo to isolate infinite re-render
+  const governance = { blocking: [], risk: [], info: [] };
+  // Temporarily disable decisionTrace useMemo to isolate infinite re-render
+  const decisionTrace = {
+    decision: 'UNKNOWN',
+    confidence: 0,
+    runId: current.runId,
+    branch: 'unknown',
+    commit: 'unknown',
+    timestamp: Date.now(),
+    summary: { failedHighTrust: 0, regressions: 0, flakyCritical: 0 },
+    factors: []
+  };
   const confidenceHint = confidenceScore >= 85 ? 'Safe to proceed' : confidenceScore >= 65 ? 'Proceed with caution' : 'Do not proceed';
   const confidenceTone = confidenceScore >= 85 ? 'success' : confidenceScore >= 65 ? 'warning' : 'danger';
 
@@ -251,14 +241,14 @@ export function ExecutiveOverviewPage(): JSX.Element {
           {decisionTrace.summary.regressions} regressions, {decisionTrace.summary.flakyCritical} flaky in critical areas.
         </div>
         <div style={{ marginTop: 8 }}>
-          {decisionTrace.factors.map(f => (
+          {decisionTrace.factors.map((f: any) => (
             <div key={f.kind} className="card" style={{ marginBottom: 8, padding: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: 700 }}>{f.label}</div>
                 <div className="muted">{f.count} tests</div>
               </div>
               <div className="muted" style={{ marginTop: 4 }}>{f.explanation}</div>
-              <div className="muted" style={{ marginTop: 4 }}>Teams: {f.owners.length ? f.owners.join(', ') : '—'}</div>
+              <div className="muted" style={{ marginTop: 4 }}>Teams: {f.owners?.length ? f.owners.join(', ') : '—'}</div>
               <div style={{ marginTop: 4 }}>
                 <Link to={f.link}>View evidence</Link>
               </div>
@@ -274,7 +264,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
               <DeltaStat label="New failures" delta={regressions.summary.newFailures.length} />
               <DeltaStat label="New flaky" delta={regressions.summary.newFlakies.length} />
               <DeltaStat label="Perf regressions" delta={regressions.summary.perf.length} />
-              <DeltaStat label="Recovered" delta={regressions.summary.recovered.length} positiveIsUp />
+              <DeltaStat label="Recovered" delta={regressions.summary.recovered.length} />
             </div>
           ) : (
             <div className="muted">Loading regression insights…</div>
@@ -299,7 +289,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
             <CardList
               title="Regressions"
               items={
-                regressions.summary.newFailures.slice(0, 4).map(r => ({
+                regressions.summary.newFailures.slice(0, 4).map((r: any) => ({
                   id: r.testId,
                   label: `${r.title} (${r.severity})`,
                   link: `/runs/${current.runId}/tests/${r.testId}/debugger`
@@ -310,7 +300,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
             <CardList
               title="Risk hotspots"
               items={
-                regressions.hotspots.folders.slice(0, 4).map(f => ({
+                regressions.hotspots.folders.slice(0, 4).map((f: any) => ({
                   id: f.id,
                   label: `${f.id} (${f.count})`,
                   link: `/runs/${current.runId}/explorer`
@@ -388,7 +378,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
               title="Folders"
               items={
                 regressions.hotspots.folders.length
-                  ? regressions.hotspots.folders.map(f => ({
+                  ? regressions.hotspots.folders.map((f: any) => ({
                       id: f.id,
                       label: `${f.id} (${f.count})`,
                       link: `/runs/${current.runId}/explorer`
@@ -401,7 +391,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
               title="Tags"
               items={
                 regressions.hotspots.tags.length
-                  ? regressions.hotspots.tags.map(t => ({
+                  ? regressions.hotspots.tags.map((t: any) => ({
                       id: t.tag,
                       label: `${t.tag} (${t.count})`,
                       link: `/runs/${current.runId}/index`
