@@ -255,6 +255,8 @@ export function DebuggerPage(): JSX.Element {
           <div className="muted" style={{ marginBottom: 4 }}>
             <Link to={`/runs/${runId}`}>← Back to run</Link>
             {' · '}
+            <Link to={`/runs/${runId}/tests/${testId}`}>Test Case</Link>
+            {' · '}
             <Link to={`/tests/${testId}/history`}>History</Link>
             {' · '}
             <Link to={`/runs/${runId}/explorer`}>Explorer</Link>

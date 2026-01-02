@@ -321,7 +321,7 @@ export function RunDetailPage(): JSX.Element {
             test={test}
             trust={trustByTestId?.[test.testId]}
             regression={regressions?.find(r => r.testId === test.testId)}
-            onDebuggerClick={() => navigate(`/runs/${runId}/tests/${test.testId}/debugger`)}
+            onDebuggerClick={() => navigate(`/runs/${runId}/tests/${test.testId}`)}
             onHistoryClick={() => navigate(`/tests/${test.testId}/history`)}
             onExplorerClick={() => navigate(`/runs/${runId}/explorer?test=${test.testId}`)}
           />
