@@ -5,6 +5,7 @@
 
 @import '../../common/visual/visualSystem.css';
 @import '../../common/spatial/spatialRhythm.css';
+@import '../../common/interactions/interactions.css';
 
 .executive-home {
   height: 100vh;

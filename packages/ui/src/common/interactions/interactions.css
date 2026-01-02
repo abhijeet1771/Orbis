@@ -1,0 +1,317 @@
+/**
+ * Phase 8.7 - Micro-Interactions System
+ *
+ * Prime Law: Micro-interactions must reduce cognitive load, not add delight noise.
+ *
+ * 4 Interaction Types:
+ * 1. Affirmation - "Yes, this is interactive"
+ * 2. Guidance - "This is what happens if you click"
+ * 3. Transition - "You moved deeper, not elsewhere"
+ * 4. Confirmation - "The system accepted your action"
+ */
+
+/* =============================================================================
+   INTERACTION TAXONOMY - Base Classes
+   ============================================================================= */
+
+/* 1️⃣ AFFIRMATION - "Yes, this is interactive" */
+.interaction-affirmation {
+  transition: all var(--motion-timing-scale-system-response) ease-out;
+}
+
+.interaction-affirmation:hover {
+  /* 2-3px elevation (tone-based, no shadow) */
+  background: var(--depth-elevation-2);
+  border-color: var(--color-border-light);
+  /* No scale-up, no glow, no color shift beyond +4% luminance */
+}
+
+/* 2️⃣ GUIDANCE - "This is what happens if you click" */
+.interaction-guidance {
+  position: relative;
+  overflow: hidden; /* For underline animation */
+}
+
+.interaction-guidance::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 1px;
+  background: var(--color-accent);
+  transition: all var(--motion-timing-scale-system-response) ease-out;
+  transform: translateX(-50%);
+}
+
+.interaction-guidance:hover::after {
+  width: 100%;
+  left: 0;
+  transform: none;
+}
+
+/* 3️⃣ TRANSITION - "You moved deeper, not elsewhere" */
+.interaction-transition {
+  transition: all var(--motion-timing-scale-state-transition) ease-out;
+}
+
+.interaction-transition--enter {
+  opacity: 0;
+  transform: translateX(12px);
+  animation: interaction-transition-enter var(--motion-timing-scale-state-transition) ease-out;
+}
+
+.interaction-transition--exit {
+  opacity: 1;
+  transform: translateX(0);
+  animation: interaction-transition-exit var(--motion-timing-scale-state-transition) ease-out;
+}
+
+@keyframes interaction-transition-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes interaction-transition-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0.3;
+    transform: translateX(-8px);
+  }
+}
+
+/* 4️⃣ CONFIRMATION - "The system accepted your action" */
+.interaction-confirmation {
+  position: relative;
+}
+
+.interaction-confirmation::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: var(--color-accent-subtle);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.interaction-confirmation.confirmed::before {
+  animation: interaction-confirmation-pulse var(--motion-timing-scale-system-response) ease-out;
+}
+
+@keyframes interaction-confirmation-pulse {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.6;
+  }
+  50% {
+    width: 40px;
+    height: 40px;
+    opacity: 0.3;
+  }
+  100% {
+    width: 60px;
+    height: 60px;
+    opacity: 0;
+  }
+}
+
+/* =============================================================================
+   EXECUTIVE HOME SPECIFIC INTERACTIONS
+   ============================================================================= */
+
+/* 🟦 Release Readiness Block */
+.executive-home__verdict-primary.interaction-affirmation:hover {
+  /* Faint boundary reveal - tone-based elevation */
+  background: var(--color-background);
+  border: var(--depth-border-width) solid var(--color-accent-light);
+  box-shadow: none; /* No shadows */
+}
+
+/* 🟨 Metrics (Pass rate, Failures, Duration) */
+.executive-home__snapshot-item.interaction-guidance {
+  cursor: pointer;
+}
+
+.executive-home__snapshot-item.interaction-guidance:hover .executive-home__snapshot-value {
+  /* Numeric emphasis - font weight up */
+  font-weight: var(--font-weight-heavy);
+  /* Label down - subtle de-emphasis */
+  opacity: 0.7;
+}
+
+/* 🟥 Failed Tests List */
+.executive-home__failure-item.interaction-guidance:hover {
+  /* Row alignment highlight */
+  background: var(--depth-elevation-1);
+  border-left: 3px solid var(--color-fail-light);
+}
+
+.executive-home__failure-item.interaction-guidance:hover .executive-home__failure-link::after {
+  /* Subtle directional hint */
+  content: ' →';
+  opacity: 0.5;
+  font-weight: var(--font-weight-normal);
+}
+
+/* Failure reason fade-in after name */
+.executive-home__failure-reason {
+  opacity: 0;
+  transform: translateY(2px);
+  transition: all var(--motion-timing-scale-system-response) ease-out var(--motion-timing-scale-system-response);
+}
+
+.executive-home__failure-item:hover .executive-home__failure-reason {
+  opacity: 0.8;
+  transform: translateY(0);
+}
+
+/* 🟩 Risk Areas / Trust Profile */
+.executive-home__intelligence-block.interaction-affirmation {
+  /* Basic affirmation for blocks */
+}
+
+.executive-home__intelligence-block .interaction-guidance {
+  /* Contextual explanation appears inline */
+  position: relative;
+}
+
+.executive-home__intelligence-block .interaction-guidance .contextual-explanation {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all var(--motion-timing-scale-system-response) ease-out;
+  font-size: var(--font-size-meta);
+  color: var(--color-text-ambient);
+  margin-top: var(--space-1);
+}
+
+.executive-home__intelligence-block .interaction-guidance:hover .contextual-explanation {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* =============================================================================
+   KEYBOARD MICRO-INTERACTIONS (Silent Power)
+   ============================================================================= */
+
+/* Focus ring - thin, neutral, precise */
+.interaction-focus:focus-visible {
+  outline: var(--interaction-focus-outline);
+  outline-offset: var(--interaction-focus-outline-offset);
+  /* No additional animations */
+}
+
+/* Keyboard navigation indicators */
+.interaction-keyboard-nav {
+  /* Subtle indication for keyboard users */
+}
+
+.interaction-keyboard-nav:focus-visible {
+  /* Enhanced focus for keyboard navigation */
+  box-shadow: 0 0 0 2px var(--color-accent-light);
+}
+
+/* =============================================================================
+   MOTION RESTRAINT RULES (Hard Stops)
+   ============================================================================= */
+
+/* No bouncing - enforce ease-out only */
+.interaction-restrained {
+  transition-timing-function: ease-out !important;
+}
+
+/* No elastic easing */
+.interaction-no-elastic {
+  transition-timing-function: ease-out !important;
+}
+
+/* No infinite loops */
+.interaction-no-loop {
+  animation-iteration-count: 1 !important;
+}
+
+/* No celebratory motion */
+.interaction-no-celebration {
+  transform: none !important;
+  animation: none !important;
+}
+
+/* No color cycling */
+.interaction-no-color-cycle {
+  transition-property: opacity, transform, background-color !important;
+}
+
+/* =============================================================================
+   UTILITY CLASSES
+   ============================================================================= */
+
+.interaction-disabled {
+  opacity: var(--interaction-disabled-opacity);
+  cursor: var(--interaction-disabled-cursor);
+  pointer-events: none;
+}
+
+.interaction-loading {
+  /* Only when absolutely necessary */
+  position: relative;
+}
+
+.interaction-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top: 2px solid var(--color-accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: interaction-loading-spin 1s linear infinite;
+}
+
+@keyframes interaction-loading-spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* =============================================================================
+   RESPONSIVE ADAPTATIONS
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .interaction-affirmation,
+  .interaction-guidance,
+  .interaction-transition,
+  .interaction-confirmation {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@media (max-width: var(--breakpoint-md)) {
+  /* Touch-friendly interactions */
+  .interaction-affirmation:hover {
+    /* Less subtle on touch devices */
+    background: var(--depth-elevation-3);
+  }
+
+  .interaction-guidance:hover::after {
+    /* Faster feedback on touch */
+    transition-duration: 0.1s;
+  }
+}

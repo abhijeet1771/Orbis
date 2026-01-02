@@ -18,6 +18,7 @@ import { buildDecisionTrace } from '../../common/trace/decisionTrace.js';
 import { ExecutiveFTX } from '../../components/ExecutiveFTX.js';
 import { useExecutiveHomeState, useAwarenessLine, useMotionValidation } from '../../common/motion/index.js';
 import '../../common/spatial/index.js'; /* Phase 8.5 - Spatial Rhythm System */
+import '../../common/interactions/index.js'; /* Phase 8.7 - Micro-Interactions System */
 
 type LoadState =
   | { status: 'idle' }
@@ -232,7 +233,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
             }}
           />
 
-          <div className="executive-home__verdict-primary">
+          <div className="executive-home__verdict-primary interaction-affirmation">
             <div className="executive-home__verdict-state">{readiness.label}</div>
             <div className="executive-home__verdict-score">{readiness.score}</div>
             <div className="executive-home__verdict-justification">{readiness.rationale}</div>
@@ -306,7 +307,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
       <section className="executive-home__zone-4">
         <div className="executive-home__zone-4-content">
           {/* Why This Decision */}
-          <div className="executive-home__evidence-card">
+          <div className="executive-home__evidence-card interaction-guidance">
             <div className="executive-home__evidence-title">Why This Decision</div>
             <div className="executive-home__evidence-summary">
               {decisionTrace.summary.failedHighTrust + decisionTrace.summary.regressions + decisionTrace.summary.flakyCritical} governance signals
@@ -314,7 +315,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
           </div>
 
           {/* Current Failures */}
-          <div className="executive-home__evidence-card" onClick={() => window.location.href = `/runs/${current.runId}/index?status=failed`}>
+          <div className="executive-home__evidence-card interaction-guidance" onClick={() => window.location.href = `/runs/${current.runId}/index?status=failed`}>
             <div className="executive-home__evidence-title">Current Failures</div>
             <div className="executive-home__evidence-summary">
               {risk.currentFailures.length > 0
@@ -324,7 +325,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
           </div>
 
           {/* Risk Hotspots */}
-          <div className="executive-home__evidence-card" onClick={() => window.location.href = `/runs/${current.runId}/explorer`}>
+          <div className="executive-home__evidence-card interaction-guidance" onClick={() => window.location.href = `/runs/${current.runId}/explorer`}>
             <div className="executive-home__evidence-title">Risk Hotspots</div>
             <div className="executive-home__evidence-summary">
               {regressions?.hotspots.folders.length ?? 0} concentrated areas
@@ -332,7 +333,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
           </div>
 
           {/* Longest Running */}
-          <div className="executive-home__evidence-card">
+          <div className="executive-home__evidence-card interaction-guidance">
             <div className="executive-home__evidence-title">Longest Running</div>
             <div className="executive-home__evidence-summary">
               {risk.longestRunning.length > 0
@@ -346,16 +347,16 @@ export function ExecutiveOverviewPage(): JSX.Element {
       {/* ZONE 5 — NAVIGATION SPINE (Silent - 72px) */}
       <nav className="executive-home__zone-5">
         <div className="executive-home__zone-5-content">
-          <Link to={`/runs/${current.runId}/index`} className="executive-home__nav-item">
+          <Link to={`/runs/${current.runId}/index`} className="executive-home__nav-item interaction-guidance">
             Execution Index
           </Link>
-          <Link to={`/runs/${current.runId}/tests/${risk.currentFailures[0]?.testId}/debugger`} className="executive-home__nav-item">
+          <Link to={`/runs/${current.runId}/tests/${risk.currentFailures[0]?.testId}/debugger`} className="executive-home__nav-item interaction-guidance">
             Debugger
           </Link>
-          <Link to={`/tests/${risk.flaky[0]?.testId}/history`} className="executive-home__nav-item">
+          <Link to={`/tests/${risk.flaky[0]?.testId}/history`} className="executive-home__nav-item interaction-guidance">
             History
           </Link>
-          <Link to={`/runs/${current.runId}/artifacts`} className="executive-home__nav-item">
+          <Link to={`/runs/${current.runId}/artifacts`} className="executive-home__nav-item interaction-guidance">
             Artifacts
           </Link>
         </div>
