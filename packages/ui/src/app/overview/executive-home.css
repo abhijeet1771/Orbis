@@ -1,0 +1,409 @@
+/* Phase 8.2 - Executive Home Hierarchy & Viewport Composition */
+
+.executive-home {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-background);
+  overflow: hidden; /* No vertical scroll - ever */
+}
+
+/* Top Context Strip - 6-8vh */
+.executive-home__strip {
+  height: 7vh;
+  min-height: 48px;
+  max-height: 64px;
+  background: var(--color-background-secondary);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.executive-home__strip-left {
+  flex: 1;
+}
+
+.executive-home__strip-center {
+  flex: 1;
+  text-align: center;
+}
+
+.executive-home__strip-right {
+  flex: 1;
+  text-align: right;
+}
+
+/* Main 3-Column Layout */
+.executive-home__columns {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.executive-home__column {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.executive-home__column--left,
+.executive-home__column--right {
+  width: 21vw;
+  min-width: 280px;
+  max-width: 360px;
+  flex-shrink: 0;
+  padding: 20px;
+}
+
+.executive-home__column--center {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+/* Sections within columns */
+.executive-home__section {
+  margin-bottom: 24px;
+}
+
+.executive-home__section:last-child {
+  margin-bottom: 0;
+}
+
+.executive-home__section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.executive-home__section-link {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.executive-home__section-link:hover {
+  color: var(--color-primary);
+}
+
+/* Left Column - Signal Context */
+
+/* Governance Signals */
+.executive-home__signals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.executive-home__signal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--color-background-secondary);
+  border-radius: 4px;
+}
+
+.executive-home__signal-count {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.executive-home__signal-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+/* Ownership Impact */
+.executive-home__ownership {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.executive-home__ownership-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--color-background-secondary);
+  border-radius: 4px;
+}
+
+.executive-home__ownership-count {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.executive-home__ownership-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+/* Change Since Last Run */
+.executive-home__change {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.executive-home__change-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--color-background-secondary);
+  border-radius: 3px;
+}
+
+.executive-home__change-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.executive-home__change-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+/* Center Column - Executive Core */
+
+/* Primary Verdict */
+.executive-home__verdict {
+  margin-bottom: 32px;
+  max-width: 500px;
+}
+
+.executive-home__verdict-state {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.executive-home__verdict-justification {
+  font-size: 16px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Outcome Snapshot */
+.executive-home__snapshot {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+  max-width: 400px;
+}
+
+.executive-home__snapshot-item {
+  text-align: center;
+  padding: 16px;
+  background: var(--color-background-secondary);
+  border-radius: 8px;
+}
+
+.executive-home__snapshot-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.executive-home__snapshot-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Decision Trace */
+.executive-home__decision-trace {
+  max-width: 500px;
+  width: 100%;
+}
+
+.executive-home__decision-trace-summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  padding: 12px;
+  background: var(--color-background-secondary);
+  border-radius: 6px;
+  border: none;
+  outline: none;
+  width: 100%;
+  text-align: left;
+}
+
+.executive-home__decision-trace-summary:hover {
+  background: var(--color-background-hover);
+}
+
+.executive-home__decision-trace-content {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--color-background-secondary);
+  border-radius: 6px;
+}
+
+.executive-home__decision-factor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.executive-home__decision-factor:last-child {
+  border-bottom: none;
+}
+
+.executive-home__decision-factor-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+}
+
+.executive-home__decision-factor-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-right: 12px;
+}
+
+.executive-home__decision-factor-link {
+  font-size: 12px;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.executive-home__decision-factor-link:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Right Column - Risk Surface */
+
+/* Current Failures */
+.executive-home__failures {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.executive-home__failure-item {
+  padding: 6px 0;
+}
+
+.executive-home__failure-link {
+  font-size: 13px;
+  color: var(--color-text);
+  text-decoration: none;
+  line-height: 1.3;
+}
+
+.executive-home__failure-link:hover {
+  color: var(--color-primary);
+}
+
+/* Longest Running */
+.executive-home__long-running {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.executive-home__long-running-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--color-background-secondary);
+  border-radius: 4px;
+}
+
+.executive-home__long-running-title {
+  flex: 1;
+  margin-right: 8px;
+}
+
+.executive-home__long-running-title a {
+  font-size: 12px;
+  color: var(--color-text);
+  text-decoration: none;
+  line-height: 1.3;
+}
+
+.executive-home__long-running-title a:hover {
+  color: var(--color-primary);
+}
+
+.executive-home__long-running-duration {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Regression Summary */
+.executive-home__regressions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.executive-home__regression-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--color-background-secondary);
+  border-radius: 3px;
+}
+
+.executive-home__regression-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.executive-home__regression-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .executive-home__column--left,
+  .executive-home__column--right {
+    width: 240px;
+  }
+}
+
+@media (max-height: 800px) {
+  .executive-home__strip {
+    height: 6vh;
+  }
+}

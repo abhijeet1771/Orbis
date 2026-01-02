@@ -5,6 +5,7 @@ import { getRuns, RunSummaryItem, getRun as getRunStatic } from '../api/client.j
 import { useRunData } from '../data/useRunData.js';
 import { formatDateTime, formatDuration } from '../util/format.js';
 import './overview.css';
+import './executive-home.css';
 import { SkeletonBlock, SkeletonLine } from '../../common/skeleton/index.js';
 import { StatusBadge } from '../../common/status/StatusBadge.js';
 import { useTrustIndex } from '../data/useTrustIndex.js';
@@ -33,7 +34,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
   useEffect(() => {
     if (runId && state.status === 'ready') {
       // Extract workspace ID from run data (using project name as workspace identifier)
-      const workspaceId = state.current.projects[0]?.name || 'default';
+      const workspaceId = (state as any).current.projects[0]?.name || 'default';
       const ftxKey = `orbis.ftx.seen.${workspaceId}`;
       const hasSeenFTX = localStorage.getItem(ftxKey) === 'true';
 
@@ -41,7 +42,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
         setShowFTX(true);
       }
     }
-  }, [runId, state.status, state.current]);
+  }, [runId, state.status]);
 
   useEffect(() => {
     console.log('[DEBUG] ExecutiveOverviewPage useEffect triggered for runId:', runId, 'status:', runState.status);
@@ -149,19 +150,24 @@ export function ExecutiveOverviewPage(): JSX.Element {
       areas: Array.from(areas)
     };
   })();
-  // Temporarily disable governance useMemo to isolate infinite re-render
-  const governance = { blocking: [], risk: [], info: [] };
-  // Temporarily disable decisionTrace useMemo to isolate infinite re-render
-  const decisionTrace = {
-    decision: 'UNKNOWN',
-    confidence: 0,
-    runId: current.runId,
-    branch: 'unknown',
-    commit: 'unknown',
-    timestamp: Date.now(),
-    summary: { failedHighTrust: 0, regressions: 0, flakyCritical: 0 },
-    factors: []
-  };
+  // Compute governance signals
+  const governance = computeGovernanceSignals({
+    tests: current.projects.flatMap(p => p.tests),
+    trust: trustByTestId,
+    regressions,
+    ownership: ownershipAgg
+  });
+
+  // Compute decision trace
+  const decisionTrace = buildDecisionTrace({
+    run: current,
+    governance,
+    trust: trustByTestId,
+    regressions: regressions ? { 'summary': regressions.summary } : undefined,
+    ownership: ownershipAgg ? { 'summary': ownershipAgg } : undefined,
+    confidence: readiness.score,
+    decisionLabel: readiness.band === 'ready' ? 'GO' : readiness.band === 'caution' ? 'GO WITH RISK' : 'NO-GO'
+  });
   const confidenceHint = confidenceScore >= 85 ? 'Safe to proceed' : confidenceScore >= 65 ? 'Proceed with caution' : 'Do not proceed';
   const confidenceTone = confidenceScore >= 85 ? 'success' : confidenceScore >= 65 ? 'warning' : 'danger';
 
@@ -177,324 +183,217 @@ export function ExecutiveOverviewPage(): JSX.Element {
   }
 
   return (
-    <div className="card">
-      <div className="card" style={{ background: '#0d1018', marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
-          <div>
-            <div className="muted" style={{ marginBottom: 4 }}>
-              <Link to="/">← Runs</Link> · <Link to={`/runs/${runId}/index`}>Execution Index</Link>
-            </div>
-            <h2 style={{ margin: 0 }}>{formatDateTime(current.startTime)}</h2>
-            <div className="muted">
-              {current.environment.git?.branch ? `${current.environment.git.branch}@` : ''}
-              {current.environment.git?.commit?.slice(0, 7) ?? 'unknown'} · schema {current.schemaVersion}
-            </div>
-            <div className="muted">
-              {current.environment.os.name} {current.environment.os.version ?? ''} · {current.projects.map(p => p.name).join(', ')}
-            </div>
+    <div className="executive-home">
+      {/* Top Context Strip - Run Identity (6-8vh) */}
+      <div className="executive-home__strip">
+        <div className="executive-home__strip-left">
+          <div className="muted" style={{ fontSize: 12 }}>
+            <Link to="/">← Runs</Link>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 32, fontWeight: 800 }}>{readiness.score}</div>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>
-              {readiness.label} {readiness.band === 'ready' ? '' : '—'}
-            </div>
-            <div className="muted" style={{ maxWidth: 260 }}>{readiness.rationale}</div>
+          <div style={{ fontSize: 18, fontWeight: 600, marginTop: 4 }}>
+            {formatDateTime(current.startTime)}
+          </div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+            {current.environment.os.name} {current.environment.os.version ?? ''} · {current.projects.map(p => p.name).join(', ')}
           </div>
         </div>
-        <div className="score-bar" style={{ marginTop: 12 }}>
-          <div className="score-bar__label">Release Readiness</div>
-          <div className="score-bar__track">
-            <div
-              className={`score-bar__fill confidence--${readiness.band === 'ready' ? 'success' : readiness.band === 'caution' ? 'warning' : 'danger'}`}
-              style={{ width: `${readiness.score}%` }}
-            />
+        <div className="executive-home__strip-center">
+          <div className="muted" style={{ fontSize: 12 }}>
+            Schema {current.schemaVersion}
           </div>
-          <div className="score-bar__meta">
-            <span>{readiness.label}</span>
-            <span>
-              Pass rate {(passRate(current) * 100).toFixed(0)}% · Failures {current.summary.failed} · Flaky {current.summary.flaky}
-            </span>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+            {current.environment.git?.branch ? `${current.environment.git.branch}@` : ''}
+            {current.environment.git?.commit?.slice(0, 7) ?? 'unknown'}
+          </div>
+        </div>
+        <div className="executive-home__strip-right">
+          <div className="muted" style={{ fontSize: 12, textAlign: 'right' }}>
+            Workspace: {current.projects[0]?.name || 'unknown'}
           </div>
         </div>
       </div>
 
-      <details className="card" style={{ marginTop: 8 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Ownership Impact</summary>
-        <div className="muted" style={{ marginTop: 6 }}>
-          Affected teams: {ownershipAgg.owners.length ? ownershipAgg.owners.join(', ') : '—'}
-        </div>
-        <div className="muted" style={{ marginTop: 4 }}>
-          Teams with blocking failures: {ownershipAgg.blocking.length ? ownershipAgg.blocking.join(', ') : '—'}
-        </div>
-        <div className="muted" style={{ marginTop: 4 }}>
-          Feature areas impacted: {ownershipAgg.areas.length ? ownershipAgg.areas.join(', ') : '—'}
-        </div>
-      </details>
-
-      <Section title="Governance Signals">
-        <div className="grid">
-          <GovernanceCard
-            title="Blocking"
-            count={governance.blocking.length}
-            summary="High-severity, high-trust failures that may impact readiness."
-            details="These are failed or timed-out tests marked high/critical severity with high trust. They are treated as release-impacting signals."
-          />
-          <GovernanceCard
-            title="Risk"
-            count={governance.risk.length}
-            summary="Flaky in critical areas or regressions on trusted tests."
-            details="Risk signals highlight flaky tests in critical areas and regressions on high-trust tests, prompting focused review."
-          />
-          <GovernanceCard
-            title="Informational"
-            count={governance.info.length}
-            summary="New/low-trust tests or long-running cases to watch."
-            details="Informational signals surface new or low-trust tests and unusually long-running cases; they do not block release."
-          />
-        </div>
-      </Section>
-
-      <details className="card" style={{ marginTop: 8, padding: 12 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Decision Trace</summary>
-        <div className="muted" style={{ marginTop: 4 }}>
-          Decision: {decisionTrace.decision} · Score {decisionTrace.confidence} · Run {decisionTrace.runId}
-        </div>
-        <div className="muted" style={{ marginTop: 4 }}>
-          Branch {decisionTrace.branch ?? 'unknown'} @ {decisionTrace.commit?.slice(0, 7) ?? 'unknown'} · Time{' '}
-          {new Date(decisionTrace.timestamp).toLocaleString()}
-        </div>
-        <div className="muted" style={{ marginTop: 8 }}>
-          This decision was based on: {decisionTrace.summary.failedHighTrust} failed high-trust tests,{' '}
-          {decisionTrace.summary.regressions} regressions, {decisionTrace.summary.flakyCritical} flaky in critical areas.
-        </div>
-        <div style={{ marginTop: 8 }}>
-          {decisionTrace.factors.map((f: any) => (
-            <div key={f.kind} className="card" style={{ marginBottom: 8, padding: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: 700 }}>{f.label}</div>
-                <div className="muted">{f.count} tests</div>
+      {/* Main 3-Column Layout */}
+      <div className="executive-home__columns">
+        {/* Left Column - Signal Context (20-22vw) */}
+        <div className="executive-home__column executive-home__column--left">
+          <div className="executive-home__section">
+            <div className="executive-home__section-title">Governance Signals</div>
+            <div className="executive-home__signals">
+              <div className="executive-home__signal">
+                <div className="executive-home__signal-count">{governance.blocking.length}</div>
+                <div className="executive-home__signal-label">Blocking</div>
               </div>
-              <div className="muted" style={{ marginTop: 4 }}>{f.explanation}</div>
-              <div className="muted" style={{ marginTop: 4 }}>Teams: {f.owners?.length ? f.owners.join(', ') : '—'}</div>
-              <div style={{ marginTop: 4 }}>
-                <Link to={f.link}>View evidence</Link>
+              <div className="executive-home__signal">
+                <div className="executive-home__signal-count">{governance.risk.length}</div>
+                <div className="executive-home__signal-label">Risk</div>
+              </div>
+              <div className="executive-home__signal">
+                <div className="executive-home__signal-count">{governance.info.length}</div>
+                <div className="executive-home__signal-label">Informational</div>
               </div>
             </div>
-          ))}
-        </div>
-      </details>
+          </div>
 
-      <Section title="Change Since Last Run">
-        {previous ? (
-          regressions ? (
-            <div className="grid">
-              <DeltaStat label="New failures" delta={regressions.summary.newFailures.length} />
-              <DeltaStat label="New flaky" delta={regressions.summary.newFlakies.length} />
-              <DeltaStat label="Perf regressions" delta={regressions.summary.perf.length} />
-              <DeltaStat label="Recovered" delta={regressions.summary.recovered.length} />
+          <div className="executive-home__section">
+            <div className="executive-home__section-title">Ownership Impact</div>
+            <div className="executive-home__ownership">
+              <div className="executive-home__ownership-item">
+                <div className="executive-home__ownership-count">{ownershipAgg.owners.length}</div>
+                <div className="executive-home__ownership-label">Teams affected</div>
+              </div>
+              <div className="executive-home__ownership-item">
+                <div className="executive-home__ownership-count">{ownershipAgg.blocking.length}</div>
+                <div className="executive-home__ownership-label">Teams blocking</div>
+              </div>
+              <div className="executive-home__ownership-item">
+                <div className="executive-home__ownership-count">{ownershipAgg.areas.length}</div>
+                <div className="executive-home__ownership-label">Feature areas</div>
+              </div>
             </div>
-          ) : (
-            <div className="muted">Loading regression insights…</div>
-          )
-        ) : (
-          <div className="muted">This is the first recorded execution.</div>
-        )}
-      </Section>
-
-      {regressions && (
-        <Section title="Why this decision">
-          <div className="grid">
-            <CardList
-              title="Blocking failures"
-              items={blockingFailures(current).map(t => ({
-                id: t.testId,
-                label: t.title,
-                link: `/runs/${current.runId}/tests/${t.testId}/debugger`
-              }))}
-              emptyText="No blocking failures."
-            />
-            <CardList
-              title="Regressions"
-              items={
-                regressions.summary.newFailures.slice(0, 4).map((r: any) => ({
-                  id: r.testId,
-                  label: `${r.title} (${r.severity})`,
-                  link: `/runs/${current.runId}/tests/${r.testId}/debugger`
-                })) || []
-              }
-              emptyText="No regressions detected."
-            />
-            <CardList
-              title="Risk hotspots"
-              items={
-                regressions.hotspots.folders.slice(0, 4).map((f: any) => ({
-                  id: f.id,
-                  label: `${f.id} (${f.count})`,
-                  link: `/runs/${current.runId}/explorer`
-                })) || []
-              }
-              emptyText="No concentrated risk areas."
-            />
-            <CardList
-              title="Trust profile"
-              items={trustDistribution(trustByTestId).map(t => ({
-                id: t.label,
-                label: `${t.label}: ${t.count}`,
-                link: `/runs/${current.runId}/index`
-              }))}
-              emptyText="No trust data."
-            />
-            <CardList
-              title="Governance signals contributing"
-              items={[
-                { id: 'blocking', label: `Blocking signals: ${governance.blocking.length}`, link: `/runs/${current.runId}/index` },
-                { id: 'risk', label: `Risk signals: ${governance.risk.length}`, link: `/runs/${current.runId}/index` },
-                { id: 'info', label: `Informational signals: ${governance.info.length}`, link: `/runs/${current.runId}/index` }
-              ]}
-              emptyText="No governance signals detected."
-            />
           </div>
-        </Section>
-      )}
 
-      <Section title="Risk Areas">
-        <div className="grid">
-          <CardList
-            title="Current failures"
-            items={risk.currentFailures.slice(0, 4).map(t => ({
-              id: t.testId,
-              label: t.title,
-              link: `/runs/${current.runId}/tests/${t.testId}/debugger`
-            }))}
-            emptyText="No active failures."
-          />
-          <CardList
-            title="Flaky tests"
-            items={risk.flaky.slice(0, 4).map(t => ({
-              id: t.testId,
-              label: t.title,
-              link: `/tests/${t.testId}/history`
-            }))}
-            emptyText="No flaky signals detected."
-          />
-          <CardList
-            title="Persistent regressions"
-            items={risk.persistentFailures.slice(0, 4).map(t => ({
-              id: t.testId,
-              label: t.title,
-              link: `/tests/${t.testId}/history`
-            }))}
-            emptyText="No consecutive failures observed."
-          />
-          <CardList
-            title="Longest running tests"
-            items={risk.longestRunning.slice(0, 4).map(t => ({
-              id: t.testId,
-              label: `${t.title} (${formatDuration(t.timing?.durationMs ?? 0)})`,
-              link: `/runs/${current.runId}/tests/${t.testId}/debugger`
-            }))}
-            emptyText="No duration risks detected."
-          />
-        </div>
-      </Section>
-
-      {regressions && (
-        <Section title="Regression Hotspots">
-          <div className="grid">
-            <CardList
-              title="Folders"
-              items={
-                regressions.hotspots.folders.length
-                  ? regressions.hotspots.folders.map((f: any) => ({
-                      id: f.id,
-                      label: `${f.id} (${f.count})`,
-                      link: `/runs/${current.runId}/explorer`
-                    }))
-                  : []
-              }
-              emptyText="No concentrated folder regressions."
-            />
-            <CardList
-              title="Tags"
-              items={
-                regressions.hotspots.tags.length
-                  ? regressions.hotspots.tags.map((t: any) => ({
-                      id: t.tag,
-                      label: `${t.tag} (${t.count})`,
-                      link: `/runs/${current.runId}/index`
-                    }))
-                  : []
-              }
-              emptyText="No tag-based regressions."
-            />
+          <div className="executive-home__section">
+            <div className="executive-home__section-title">Change Since Last Run</div>
+            <div className="executive-home__change">
+              {previous ? (
+                regressions ? (
+                  <>
+                    <div className="executive-home__change-item">
+                      <div className="executive-home__change-count">{regressions.summary.newFailures.length}</div>
+                      <div className="executive-home__change-label">New failures</div>
+                    </div>
+                    <div className="executive-home__change-item">
+                      <div className="executive-home__change-count">{regressions.summary.newFlakies.length}</div>
+                      <div className="executive-home__change-label">New flaky</div>
+                    </div>
+                    <div className="executive-home__change-item">
+                      <div className="executive-home__change-count">{regressions.summary.perf.length}</div>
+                      <div className="executive-home__change-label">Performance</div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="muted" style={{ fontSize: 12 }}>Loading...</div>
+                )
+              ) : (
+                <div className="muted" style={{ fontSize: 12 }}>First run</div>
+              )}
+            </div>
           </div>
-        </Section>
-      )}
-
-      <Section title="Proof & Details">
-        <div className="grid">
-          <CardList
-            title="View failed tests"
-            items={[
-              {
-                id: 'exec-index-failed',
-                label: 'Open Execution Index',
-                link: `/runs/${current.runId}/index`
-              }
-            ]}
-          />
-          <CardList
-            title="Open Debugger"
-            items={
-              risk.currentFailures.length
-                ? [
-                    {
-                      id: 'first-failure-debugger',
-                      label: `First failure: ${risk.currentFailures[0].title}`,
-                      link: `/runs/${current.runId}/tests/${risk.currentFailures[0].testId}/debugger`
-                    }
-                  ]
-                : [
-                    {
-                      id: 'debugger-generic',
-                      label: 'Open debugger',
-                      link: `/runs/${current.runId}/index`
-                    }
-                  ]
-            }
-          />
-          <CardList
-            title="Test history"
-            items={
-              risk.flaky.length
-                ? [
-                    {
-                      id: 'history',
-                      label: `Review history: ${risk.flaky[0].title}`,
-                      link: `/tests/${risk.flaky[0].testId}/history`
-                    }
-                  ]
-                : [
-                    {
-                      id: 'history-generic',
-                      label: 'Browse test histories',
-                      link: `/runs/${current.runId}/index`
-                    }
-                  ]
-            }
-          />
-          <CardList
-            title="Artifacts & Evidence"
-            items={[
-              {
-                id: 'artifacts',
-                label: 'View attachments and evidence',
-                link: `/runs/${current.runId}/artifacts`
-              }
-            ]}
-          />
         </div>
-      </Section>
+
+        {/* Center Column - Executive Core (auto / elastic) */}
+        <div className="executive-home__column executive-home__column--center">
+          <div className="executive-home__verdict">
+            <div className="executive-home__verdict-state">{readiness.label}</div>
+            <div className="executive-home__verdict-justification">{readiness.rationale}</div>
+          </div>
+
+          <div className="executive-home__snapshot">
+            <div className="executive-home__snapshot-item">
+              <div className="executive-home__snapshot-value">{(passRate(current) * 100).toFixed(0)}%</div>
+              <div className="executive-home__snapshot-label">Pass rate</div>
+            </div>
+            <div className="executive-home__snapshot-item">
+              <div className="executive-home__snapshot-value">{current.summary.failed}</div>
+              <div className="executive-home__snapshot-label">Failed</div>
+            </div>
+            <div className="executive-home__snapshot-item">
+              <div className="executive-home__snapshot-value">{current.summary.flaky}</div>
+              <div className="executive-home__snapshot-label">Flaky</div>
+            </div>
+            <div className="executive-home__snapshot-item">
+              <div className="executive-home__snapshot-value">
+                {regressions ? (regressions.summary.newFailures.length > 0 ? 'Yes' : 'No') : '—'}
+              </div>
+              <div className="executive-home__snapshot-label">Regressions</div>
+            </div>
+          </div>
+
+          <details className="executive-home__decision-trace">
+            <summary className="executive-home__decision-trace-summary">
+              Decision Trace · Score {readiness.score} · {decisionTrace.summary.failedHighTrust + decisionTrace.summary.regressions + decisionTrace.summary.flakyCritical} signals
+            </summary>
+            <div className="executive-home__decision-trace-content">
+              <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                Based on: {decisionTrace.summary.failedHighTrust} failed high-trust, {decisionTrace.summary.regressions} regressions, {decisionTrace.summary.flakyCritical} flaky critical
+              </div>
+              {decisionTrace.factors.map((f: any, i: number) => (
+                <div key={i} className="executive-home__decision-factor">
+                  <div className="executive-home__decision-factor-label">{f.label}</div>
+                  <div className="executive-home__decision-factor-count">{f.count} tests</div>
+                  <Link to={f.link} className="executive-home__decision-factor-link">View</Link>
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+
+        {/* Right Column - Risk Surface (20-22vw) */}
+        <div className="executive-home__column executive-home__column--right">
+          <div className="executive-home__section">
+            <div className="executive-home__section-title">
+              <Link to={`/runs/${current.runId}/index?status=failed`} className="executive-home__section-link">
+                Current Failures
+              </Link>
+            </div>
+            <div className="executive-home__failures">
+              {risk.currentFailures.slice(0, 6).map(failure => (
+                <div key={failure.testId} className="executive-home__failure-item">
+                  <Link to={`/runs/${current.runId}/tests/${failure.testId}/debugger`} className="executive-home__failure-link">
+                    {failure.title}
+                  </Link>
+                </div>
+              ))}
+              {risk.currentFailures.length === 0 && (
+                <div className="muted" style={{ fontSize: 12 }}>No failures</div>
+              )}
+            </div>
+          </div>
+
+          <div className="executive-home__section">
+            <div className="executive-home__section-title">Longest Running</div>
+            <div className="executive-home__long-running">
+              {risk.longestRunning.slice(0, 4).map(test => (
+                <div key={test.testId} className="executive-home__long-running-item">
+                  <div className="executive-home__long-running-title">
+                    <Link to={`/runs/${current.runId}/tests/${test.testId}/debugger`}>
+                      {test.title}
+                    </Link>
+                  </div>
+                  <div className="executive-home__long-running-duration">
+                    {formatDuration(test.timing?.durationMs ?? 0)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="executive-home__section">
+            <div className="executive-home__section-title">Regression Summary</div>
+            <div className="executive-home__regressions">
+              {regressions ? (
+                <>
+                  <div className="executive-home__regression-item">
+                    <div className="executive-home__regression-count">{regressions.summary.newFailures.length}</div>
+                    <div className="executive-home__regression-label">New failures</div>
+                  </div>
+                  <div className="executive-home__regression-item">
+                    <div className="executive-home__regression-count">{regressions.summary.newFlakies.length}</div>
+                    <div className="executive-home__regression-label">New flaky</div>
+                  </div>
+                  <div className="executive-home__regression-item">
+                    <div className="executive-home__regression-count">{regressions.summary.perf.length}</div>
+                    <div className="executive-home__regression-label">Performance</div>
+                  </div>
+                </>
+              ) : (
+                <div className="muted" style={{ fontSize: 12 }}>No regressions</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
