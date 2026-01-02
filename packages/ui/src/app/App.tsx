@@ -5,6 +5,8 @@ import { RunListPage } from './runs/RunListPage';
 import { RunDetailPage } from './runs/RunDetailPage';
 import { DebuggerPage } from './debugger/DebuggerPage';
 import { TestHistoryPage } from './history/TestHistoryPage';
+import { ExecutionHistoryPage } from './history/ExecutionHistoryPage';
+import { RiskHistoryPage } from './history/RiskHistoryPage';
 import { ExecutiveOverviewPage } from './overview/ExecutiveOverviewPage';
 import { ExplorerPage } from './explorer/ExplorerPage';
 import { ArtifactsPage } from './artifacts/ArtifactsPage';
@@ -32,6 +34,8 @@ export default function App(): JSX.Element {
             <Route path="/runs/:runId/explorer" element={<ExplorerPage />} />
             <Route path="/runs/:runId/artifacts" element={<ArtifactsPage />} />
             <Route path="/runs/:runId/tests/:testId/debugger" element={<DebuggerPage />} />
+            <Route path="/runs/:runId/history" element={<ExecutionHistoryPage />} />
+            <Route path="/runs/:runId/risk-history" element={<RiskHistoryPage />} />
             <Route path="/tests/:testId/history" element={<TestHistoryPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

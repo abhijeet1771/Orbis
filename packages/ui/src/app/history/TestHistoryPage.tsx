@@ -1,35 +1,29 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import type { TestRun, TestCaseResult, TestStatus } from '@orbisreport/core';
-import { getRuns, getRun, RunSummaryItem } from '../api/client';
+/**
+ * Test History Page - Phase 8.9 History as Story
+ *
+ * Question: "Can I trust this test?"
+ * Visual: Single-row timeline per test (dots, not bars)
+ * Only one test at a time - trust built from patterns, not counts
+ */
+
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { getRuns, getRun } from '../api/client';
 import { useDataContext } from '../data/DataContext';
+import { HistoryEntryPoint } from '../../common/history/HistoryEntryPoint';
 import { EmptyState } from '../../common/empty/EmptyState';
 import { SkeletonBlock, SkeletonLine } from '../../common/skeleton';
-import { StatusBadge } from '../../common/status/StatusBadge';
-import { formatDateTime, formatDuration } from '../util/format';
-import { computeTrust } from '../../common/trust/trustScore';
-import { TrustBadge } from '../../common/trust/TrustBadge';
-import { TrustExplain } from '../../common/trust/TrustExplain';
-import './history.css';
-
-interface HistoryPoint {
-  runId: string;
-  timestamp: number;
-  status: TestStatus;
-  durationMs: number;
-  title: string;
-  tags: string[];
-}
+import '../../common/history/history.css';
+import type { TestExecution } from '../../common/history/components/TestHistory';
 
 type LoadState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'error'; error: string }
-  | { status: 'ready'; points: HistoryPoint[]; latestTitle?: string; tags: string[] };
+  | { status: 'ready'; executions: TestExecution[]; testTitle: string };
 
 export function TestHistoryPage(): JSX.Element {
   const { testId } = useParams<{ testId: string }>();
-  const navigate = useNavigate();
   const { mode } = useDataContext();
   const [state, setState] = useState<LoadState>({ status: 'idle' });
 
@@ -39,41 +33,44 @@ export function TestHistoryPage(): JSX.Element {
       return;
     }
     if (!testId) return;
+
     let mounted = true;
     setState({ status: 'loading' });
+
     (async () => {
       try {
         const runs = await getRuns();
-        const sorted = [...runs].sort(
+        const sortedRuns = [...runs].sort(
           (a, b) => (a.startTime ?? a.createdAt ?? 0) - (b.startTime ?? b.createdAt ?? 0)
         );
-        const points: HistoryPoint[] = [];
-        let latestTitle: string | undefined;
-        let tags: string[] = [];
 
-        for (const runMeta of sorted) {
+        const executions: TestExecution[] = [];
+        let testTitle = 'Unknown test';
+
+        for (const runMeta of sortedRuns) {
           const run = await getRun(runMeta.runId);
           const test = findTest(run, testId);
           if (test) {
-            points.push({
+            executions.push({
               runId: run.runId,
               timestamp: run.startTime ?? runMeta.createdAt ?? Date.now(),
               status: test.status,
-              durationMs: test.timing.durationMs ?? 0,
-              title: test.title,
-              tags: test.tags ?? []
+              duration: test.timing.durationMs ?? 0,
+              failureMessage: test.failure?.message,
+              retryAttempts: test.retries?.attempts?.length ?? 0
             });
-            latestTitle = test.title;
-            tags = test.tags ?? [];
+            testTitle = test.title;
           }
         }
 
         if (!mounted) return;
-        if (!points.length) {
+
+        if (!executions.length) {
           setState({ status: 'error', error: 'Test not found in any runs' });
           return;
         }
-        setState({ status: 'ready', points, latestTitle, tags });
+
+        setState({ status: 'ready', executions, testTitle });
       } catch (err) {
         if (!mounted) return;
         setState({ status: 'error', error: err instanceof Error ? err.message : 'Failed to load history' });
@@ -90,10 +87,8 @@ export function TestHistoryPage(): JSX.Element {
       <div className="card">
         <SkeletonLine width="50%" />
         <SkeletonLine width="40%" />
-        <div className="grid" style={{ marginTop: 12 }}>
-          {[...Array(6)].map((_, idx) => (
-            <SkeletonBlock key={idx} height={72} />
-          ))}
+        <div style={{ marginTop: 16 }}>
+          <SkeletonBlock height={120} />
         </div>
       </div>
     );
@@ -102,246 +97,52 @@ export function TestHistoryPage(): JSX.Element {
   if (state.status === 'error') {
     return (
       <div className="card">
-        <div>Failed to load history: {state.error}</div>
-        <div style={{ marginTop: 8 }}>
-          <Link to="/">Back</Link>
-        </div>
+        <EmptyState
+          title="History unavailable"
+          description={state.error}
+          actionLabel="Back to runs"
+          onAction={() => window.history.back()}
+          size="md"
+        />
       </div>
     );
   }
 
-  const points = state.points;
-  const summary = summarize(points);
-  const stability = stabilityBadge(points);
-  const trust = computeTrust(
-    points.map(p => ({
-      status: p.status,
-      durationMs: p.durationMs,
-      timestamp: p.timestamp
-    }))
-  );
-
-  if (points.length === 0) {
+  if (state.executions.length === 0) {
     return (
       <EmptyState
         title="No history yet"
-        description="This test hasn’t appeared in prior runs. As it executes over time, its history will build here."
+        description="This test hasn't appeared in prior runs. As it executes over time, its history will build here."
+        actionLabel="Back to runs"
+        onAction={() => window.history.back()}
         size="md"
       />
     );
   }
 
+  // Use the new HistoryEntryPoint system with 'test-case-view' entry point
   return (
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div className="muted" style={{ marginBottom: 4 }}>
-            <Link to="/">← Runs</Link>
-          </div>
-          <h2 style={{ margin: '0 0 4px' }}>{state.latestTitle ?? 'Unknown test'}</h2>
-          <div className="muted">{testId}</div>
-          <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {state.tags?.map(tag => (
-              <span key={tag} className="badge">
-                {tag}
-              </span>
-            ))}
-            {!state.tags?.length && <span className="muted">No tags</span>}
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-          <TrustBadge trust={trust} />
-          <div className={`stability stability--${stability.kind}`}>{stability.label}</div>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <Timeline points={points} onSelect={runId => navigate(`/runs/${runId}/tests/${testId}/debugger`)} />
-      </div>
-
-      <div className="grid" style={{ marginTop: 16 }}>
-        <Stat label="Pass rate" value={`${summary.passRate.toFixed(0)}%`} />
-        <Stat label="Failures" value={summary.failures} />
-        <Stat label="Flaky" value={summary.flaky} />
-        <Stat label="First failure" value={summary.firstFailure ? formatDateTime(summary.firstFailure) : '—'} />
-        <Stat label="Last failure" value={summary.lastFailure ? formatDateTime(summary.lastFailure) : '—'} />
-        <Stat label="Total runs" value={points.length} />
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <TrustExplain trust={trust} />
-      </div>
-
-      <div className="card" style={{ marginTop: 16, padding: 0 }}>
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: 160 }}>Run Date</th>
-              <th style={{ width: 200 }}>Run ID</th>
-              <th style={{ width: 120 }}>Status</th>
-              <th style={{ width: 120 }}>Duration</th>
-              <th style={{ width: 140 }}>Debugger</th>
-            </tr>
-          </thead>
-          <tbody>
-            {points
-              .slice()
-              .sort((a, b) => b.timestamp - a.timestamp)
-              .map(point => (
-                <tr key={point.runId}>
-                  <td className="muted">{formatDateTime(point.timestamp)}</td>
-                  <td>{point.runId}</td>
-                  <td>
-                    <StatusChip status={point.status} />
-                  </td>
-                  <td>{formatDuration(point.durationMs)}</td>
-                  <td>
-                    <Link to={`/runs/${point.runId}/tests/${testId}/debugger`}>Open Debugger</Link>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="test-history-page">
+      <HistoryEntryPoint
+        entryPoint="test-case-view"
+        context={{
+          testId,
+          testTitle: state.testTitle
+        }}
+        data={{
+          testExecutions: state.executions
+        }}
+        onClose={() => window.history.back()}
+      />
     </div>
   );
 }
 
-function findTest(run: TestRun, testId: string): TestCaseResult | undefined {
+function findTest(run: any, testId: string): any {
   for (const project of run.projects) {
-    const found = project.tests.find(t => t.testId === testId);
+    const found = project.tests.find((t: any) => t.testId === testId);
     if (found) return found;
   }
   return undefined;
-}
-
-function summarize(points: HistoryPoint[]) {
-  const total = points.length;
-  const failures = points.filter(p => p.status === 'failed' || p.status === 'timedOut').length;
-  const flaky = points.filter(p => p.status === 'flaky').length;
-  const passRate = total === 0 ? 0 : ((total - failures - flaky) / total) * 100;
-  const failureTimestamps = points
-    .filter(p => p.status === 'failed' || p.status === 'timedOut' || p.status === 'flaky')
-    .map(p => p.timestamp);
-  return {
-    passRate,
-    failures,
-    flaky,
-    firstFailure: failureTimestamps.length ? Math.min(...failureTimestamps) : undefined,
-    lastFailure: failureTimestamps.length ? Math.max(...failureTimestamps) : undefined
-  };
-}
-
-function stabilityBadge(points: HistoryPoint[]) {
-  const hasFlaky = points.some(p => p.status === 'flaky');
-  const hasFailures = points.some(p => p.status === 'failed' || p.status === 'timedOut');
-  if (!hasFlaky && !hasFailures) return { kind: 'stable', label: 'Stable' };
-  if (hasFlaky && !hasFailures) return { kind: 'flaky', label: 'Flaky' };
-  if (hasFailures && !hasFlaky) return { kind: 'unstable', label: 'Unstable' };
-  return { kind: 'mixed', label: 'Flaky / Unstable' };
-}
-
-function Timeline({
-  points,
-  onSelect
-}: {
-  points: HistoryPoint[];
-  onSelect: (runId: string) => void;
-}): JSX.Element {
-  if (!points.length) return <div className="card">No history data.</div>;
-  const sorted = [...points].sort((a, b) => a.timestamp - b.timestamp);
-  const minTs = sorted[0].timestamp;
-  const maxTs = sorted[sorted.length - 1].timestamp || minTs + 1;
-  const width = 800;
-  const height = 200;
-
-  const xFor = (ts: number) => {
-    if (maxTs === minTs) return width / 2;
-    return ((ts - minTs) / (maxTs - minTs)) * (width - 80) + 40;
-  };
-
-  const yFor = (status: TestStatus) => {
-    switch (status) {
-      case 'passed':
-        return 60;
-      case 'flaky':
-        return 120;
-      case 'failed':
-      case 'timedOut':
-        return 180;
-      case 'skipped':
-      default:
-        return 140;
-    }
-  };
-
-  const colorFor = (status: TestStatus) => {
-    switch (status) {
-      case 'passed':
-        return '#66bb6a';
-      case 'flaky':
-        return '#ffca28';
-      case 'failed':
-      case 'timedOut':
-        return '#ef5350';
-      case 'skipped':
-      default:
-        return '#9aa3b5';
-    }
-  };
-
-  return (
-    <div className="timeline">
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} role="img">
-        <line x1="0" y1="60" x2={width} y2="60" className="timeline__grid" />
-        <line x1="0" y1="120" x2={width} y2="120" className="timeline__grid" />
-        <line x1="0" y1="180" x2={width} y2="180" className="timeline__grid" />
-        <text x="6" y="58" className="timeline__label">Passed</text>
-        <text x="6" y="118" className="timeline__label">Flaky</text>
-        <text x="6" y="178" className="timeline__label">Failed</text>
-
-        {sorted.map(point => {
-          const x = xFor(point.timestamp);
-          const y = yFor(point.status);
-          const color = colorFor(point.status);
-          return (
-            <g key={point.runId} className="timeline__point" onClick={() => onSelect(point.runId)}>
-              <circle cx={x} cy={y} r={8} fill={color} />
-              <title>
-                {formatDateTime(point.timestamp)} · {point.status} · {point.runId}
-              </title>
-            </g>
-          );
-        })}
-      </svg>
-      <div className="timeline__legend">
-        <Legend color="#66bb6a" label="Passed" />
-        <Legend color="#ef5350" label="Failed/Timed Out" />
-        <Legend color="#ffca28" label="Flaky" />
-      </div>
-    </div>
-  );
-}
-
-function Legend({ color, label }: { color: string; label: string }): JSX.Element {
-  return (
-    <span className="timeline__legend-item">
-      <span className="timeline__legend-dot" style={{ background: color }} />
-      {label}
-    </span>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number | string }): JSX.Element {
-  return (
-    <div className="stat">
-      <div className="stat__label">{label}</div>
-      <div className="stat__value">{value}</div>
-    </div>
-  );
-}
-
-function StatusChip({ status }: { status: TestStatus }): JSX.Element {
-  return <StatusBadge status={status} />;
 }
 

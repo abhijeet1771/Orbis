@@ -242,6 +242,7 @@ export function RunDetailPage(): JSX.Element {
             )}
             <div className="muted">
               <Link to={`/runs/${run.runId}`}>Executive overview</Link> ·{' '}
+              <Link to={`/runs/${run.runId}/history`}>Execution history</Link> ·{' '}
               <Link to={`/runs/${run.runId}/explorer`}>Suite explorer</Link> ·{' '}
               <Link to={`/runs/${run.runId}/artifacts`}>Artifacts</Link>
             </div>

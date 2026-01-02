@@ -353,8 +353,8 @@ export function ExecutiveOverviewPage(): JSX.Element {
           <Link to={`/runs/${current.runId}/tests/${risk.currentFailures[0]?.testId}/debugger`} className="executive-home__nav-item interaction-guidance">
             Debugger
           </Link>
-          <Link to={`/tests/${risk.flaky[0]?.testId}/history`} className="executive-home__nav-item interaction-guidance">
-            History
+          <Link to={`/runs/${current.runId}/risk-history`} className="executive-home__nav-item interaction-guidance">
+            Risk History
           </Link>
           <Link to={`/runs/${current.runId}/artifacts`} className="executive-home__nav-item interaction-guidance">
             Artifacts
