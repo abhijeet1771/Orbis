@@ -287,7 +287,7 @@ export function ExecutiveOverviewPage(): JSX.Element {
             <div className="executive-home__intelligence-title">Trust Profile</div>
             <div className="executive-home__intelligence-content">
               {trustByTestId ? (
-                Object.entries(trustDistribution(trustByTestId)).map(([label, count]) => (
+                trustDistribution(trustByTestId).map(({ label, count }) => (
                   <div key={label} className="executive-home__trust-item">
                     <div className="executive-home__trust-count">{count}</div>
                     <div className="executive-home__trust-label">{label}</div>
