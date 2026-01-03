@@ -193,3 +193,6 @@ export interface NetworkRequestInfo {
   resourceType?: 'document' | 'stylesheet' | 'image' | 'media' | 'font' | 'script' | 'xhr' | 'fetch' | 'websocket' | 'other';
 }
 
+// Causal Chain models for reverse call hierarchy
+export * from './CausalChain.js';
+
