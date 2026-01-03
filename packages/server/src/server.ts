@@ -3,6 +3,8 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { loadRun, listRuns } from './runs.js';
 import { getOrbisHome } from './workspace.js';
+import { normalizeRun } from './normalize.js';
+import { buildCausalChain } from './causal/buildCausalChain.js';
 import {
   handleIngestStream,
   LiveRunStore,
@@ -57,6 +59,47 @@ export function startServer(options: ServerOptions = {}): http.Server {
         const runId = runMatch[1];
         const run = await loadRun(runId, workspaceDir, projectHash || path.basename(workspaceDir));
         return sendJson(res, run);
+      }
+
+      // Causal chain endpoint
+      const causalChainMatch = pathname.match(/^\/api\/runs\/([^/]+)\/tests\/([^/]+)\/causal-chain$/);
+      if (req.method === 'GET' && causalChainMatch) {
+        const runId = causalChainMatch[1];
+        const testId = causalChainMatch[2];
+
+        try {
+          // Load and normalize run
+          const rawRun = await loadRun(runId, workspaceDir, projectHash || path.basename(workspaceDir));
+          const normalizedRun = normalizeRun(rawRun);
+
+          // Find the specific test
+          const test = normalizedRun.projects
+            .flatMap(p => p.tests)
+            .find(t => t.testId === testId);
+
+          if (!test) {
+            // Test not found - return empty chain (valid response)
+            return sendJson(res, { causalChain: { rootFailureId: `test-${testId}`, nodes: [] } });
+          }
+
+          // Build causal chain
+          const causalChain = buildCausalChain(test);
+
+          return sendJson(res, { causalChain });
+        } catch (err) {
+          // Log error once per failure type, not per request
+          const errorType = err instanceof Error ? err.constructor.name : 'UnknownError';
+          const errorMessage = err instanceof Error ? err.message : 'Unexpected error';
+
+          // Log once per error type (simple deduplication)
+          if (!process.env[`ORBIS_LOGGED_${errorType}`]) {
+            process.env[`ORBIS_LOGGED_${errorType}`] = '1';
+            process.stdout.write(`[SERVER] Causal chain error (${errorType}): ${errorMessage}\n`);
+          }
+
+          // Always return 200 with empty chain on error
+          return sendJson(res, { causalChain: { rootFailureId: `test-${testId}`, nodes: [] } });
+        }
       }
 
       /* ---------------- LIVE MODE ---------------- */
