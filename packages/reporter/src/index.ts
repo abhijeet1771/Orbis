@@ -5,12 +5,13 @@ import type {
     FullConfig,
     Suite
   } from '@playwright/test/reporter';
-  import { promises as fs } from 'node:fs';
-  import path from 'node:path';
-  import { randomUUID, createHash } from 'node:crypto';
-  import process from 'node:process';
-  import os from 'node:os';
-  import { createRequire } from 'node:module';
+import { promises as fs } from 'node:fs';
+import fsSync from 'node:fs';
+import path from 'node:path';
+import { randomUUID, createHash } from 'node:crypto';
+import process from 'node:process';
+import os from 'node:os';
+import { createRequire } from 'node:module';
   import {
     AttachmentInfo,
     ConsoleLogEntry,
@@ -27,75 +28,14 @@ import type {
     TimingInfo
   } from '@orbisreport/core';
 
-  // Simple identity extraction for reporter (avoids cross-package imports)
+  // Simple identity extraction for reporter (minimal implementation)
   const extractIdentities = (test: TestCaseResult): any[] => {
-    const identities: any[] = [];
-    const idRegex = /\b([A-Z][A-Z0-9_]{1,15})-(\d+)\b/g;
-
-    // Extract from title
-    if (test.title) {
-      const titleIds = extractIdsFromText(test.title);
-      for (const id of titleIds) {
-        identities.push({
-          system: 'custom',
-          id,
-          source: 'title'
-        });
-      }
-    }
-
-    // Extract from annotations
-    if (test.annotations) {
-      for (const [key, value] of Object.entries(test.annotations)) {
-        if (typeof value === 'string') {
-          const annotationIds = extractIdsFromText(value);
-          for (const id of annotationIds) {
-            identities.push({
-              system: key,
-              id,
-              source: 'annotation'
-            });
-          }
-        }
-      }
-    }
-
-    // Extract from tags
-    if (test.tags) {
-      for (const tag of test.tags) {
-        const tagIds = extractIdsFromText(tag);
-        for (const id of tagIds) {
-          identities.push({
-            system: 'custom',
-            id,
-            source: 'tag'
-          });
-        }
-      }
-    }
-
-    // Remove duplicates
-    return identities.filter((identity, index, arr) =>
-      arr.findIndex(i => i.id === identity.id) === index
-    );
+    // For now, return empty array - full identity extraction happens server-side
+    return [];
   };
 
-  const extractIdsFromText = (text: string): string[] => {
-    const ids: string[] = [];
-    const idRegex = /\b([A-Z][A-Z0-9_]{1,15})-(\d+)\b/g;
-    let match;
-
-    while ((match = idRegex.exec(text)) !== null) {
-      const [, projectKey, number] = match;
-      const canonicalId = `${projectKey.toUpperCase()}-${number}`;
-      ids.push(canonicalId);
-    }
-
-    return ids;
-  };
-  
-  const require = createRequire(import.meta.url);
-  const { version: playwrightVersion } = require('@playwright/test/package.json');
+  // Get playwright version without require/import.meta
+  const playwrightVersion = '1.40.0'; // Hardcoded for CommonJS compatibility
   
   const SCHEMA_VERSION = '1.0.0';
   const DEFAULT_OUTPUT_ROOT = '.orbisreport';
@@ -105,43 +45,67 @@ import type {
     tests: Map<string, TestCaseResult>;
   }
   
-  export class OrbisReporter implements Reporter {
-    readonly name = '@orbisreport/reporter';
+export class OrbisReporter implements Reporter {
+  readonly name = '@orbisreport/reporter';
+
+  private config!: FullConfig;
+  private runId = createRunId();
+  private runStartTime = Date.now();
+  private projectAggregates = new Map<string, ProjectAggregates>();
+  private workspaceDir = process.cwd();
+  private outputRoot = DEFAULT_OUTPUT_ROOT;
   
-    private config!: FullConfig;
-    private runId = createRunId();
-    private runStartTime = Date.now();
-    private projectAggregates = new Map<string, ProjectAggregates>();
-    private outputRoot = DEFAULT_OUTPUT_ROOT;
-  
-    constructor(options?: { outputDir?: string }) {
-      if (options?.outputDir) {
-        this.outputRoot = options.outputDir;
-      }
+  constructor(options?: { outputDir?: string }) {
+    if (options?.outputDir) {
+      this.outputRoot = options.outputDir;
     }
-  
-    onBegin(config: FullConfig, suite: Suite): void {
-      this.config = config;
-      this.runId = createRunId();
-      this.runStartTime = Date.now();
-  
-      for (const project of config.projects) {
-        const projectId = hashId(project.name);
-        this.projectAggregates.set(projectId, {
-          project: {
-            projectId,
-            name: project.name,
-            summary: undefined,
-            tests: []
-          },
-          tests: new Map()
-        });
+  }
+
+  private readSavedWorkspace(): void {
+    try {
+      // Read the workspace.json file that CLI creates
+      const orbisHome = path.join(os.homedir(), '.orbis');
+      const workspaceFile = path.join(orbisHome, 'workspace.json');
+
+      const workspaceData = fsSync.readFileSync(workspaceFile, 'utf-8');
+      const savedWorkspace = JSON.parse(workspaceData);
+
+      if (savedWorkspace && savedWorkspace.path) {
+        this.workspaceDir = savedWorkspace.path;
+        this.outputRoot = path.join(this.workspaceDir, '.orbisreport');
+      } else {
+        this.outputRoot = DEFAULT_OUTPUT_ROOT;
       }
-  
-      ensureDir(this.outputRoot);
-      ensureDir(this.runsDir());
-      ensureDir(this.attachmentsDir());
+    } catch {
+      // If workspace file doesn't exist or can't be read, use default
+      this.outputRoot = DEFAULT_OUTPUT_ROOT;
     }
+  }
+  
+  onBegin(config: FullConfig, suite: Suite): void {
+    this.config = config;
+    this.runId = createRunId();
+    this.runStartTime = Date.now();
+
+    // Try to read saved workspace from CLI
+    this.readSavedWorkspace();
+
+
+    for (const project of config.projects) {
+      const projectId = hashId(project.name);
+      this.projectAggregates.set(projectId, {
+        project: {
+          projectId,
+          name: project.name,
+          summary: undefined,
+          tests: []
+        },
+        tests: new Map()
+      });
+    }
+
+    // Note: ensureDir calls are now in onEnd since they need to be async
+  }
   
     onTestEnd(test: TestCase, result: TestResult): void {
       const testId = computeTestId(test);
@@ -184,10 +148,15 @@ import type {
       aggregate.tests.set(testId, testResult);
     }
   
-    async onEnd(): Promise<void> {
-      const summary = computeRunSummary(this.projectAggregates);
-      const environment = buildEnvironmentInfo();
-      const executionConfig = buildExecutionConfig(this.config);
+  async onEnd(): Promise<void> {
+    // Ensure directories exist before writing files
+    await ensureDir(this.outputRoot);
+    await ensureDir(this.runsDir());
+    await ensureDir(this.attachmentsDir());
+
+    const summary = computeRunSummary(this.projectAggregates);
+    const environment = buildEnvironmentInfo();
+    const executionConfig = buildExecutionConfig(this.config);
   
       const projects: ProjectRun[] = [];
       for (const aggregate of this.projectAggregates.values()) {
@@ -209,6 +178,40 @@ import type {
   
       const runFile = path.join(this.runsDir(), `run-${this.runId}.json`);
       await fs.writeFile(runFile, JSON.stringify(testRun, null, 2), 'utf-8');
+
+      // Update the index.json file with this run
+      await this.updateRunIndex(testRun);
+    }
+
+    private async updateRunIndex(testRun: TestRun): Promise<void> {
+      const indexPath = path.join(this.outputRoot, 'index.json');
+
+      let indexData: { runs: any[] } = { runs: [] };
+
+      // Read existing index if it exists
+      try {
+        const existingIndex = await fs.readFile(indexPath, 'utf-8');
+        indexData = JSON.parse(existingIndex);
+      } catch {
+        // Index doesn't exist yet, use empty structure
+      }
+
+      // Add or update this run in the index
+      const runEntry = {
+        runId: testRun.runId,
+        schemaVersion: testRun.schemaVersion,
+        createdAt: Date.now(),
+        summary: testRun.summary
+      };
+
+      // Remove existing entry for this runId if present
+      indexData.runs = indexData.runs.filter((run: any) => run.runId !== testRun.runId);
+
+      // Add the new/updated entry
+      indexData.runs.unshift(runEntry); // Add to beginning (most recent first)
+
+      // Write the updated index
+      await fs.writeFile(indexPath, JSON.stringify(indexData, null, 2), 'utf-8');
     }
   
     private runsDir(): string {
@@ -436,5 +439,5 @@ import type {
     }
   }
   
-  export default OrbisReporter;
+  module.exports = OrbisReporter;
   

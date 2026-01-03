@@ -42,6 +42,9 @@ async function main(): Promise<void> {
   const workspaceDir = resolved.path;
   const projectHash = resolved.projectHash;
 
+  // Set environment variable for reporter to use
+  process.env.ORBIS_WORKSPACE_DIR = workspaceDir;
+
   const daemon = await ensureDaemon({
     workspaceDir,
     projectHash,
