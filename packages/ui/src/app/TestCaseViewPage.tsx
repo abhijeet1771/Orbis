@@ -13,7 +13,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import type { TestRun, TestCaseResult } from '@orbisreport/core';
+import type { TestRun, TestCaseResult, ExternalIdentity } from '@orbisreport/core';
 import { useRunData } from './data/useRunData';
 import { useTrustIndex } from './data/useTrustIndex';
 import { useRegression } from './data/useRegression';
@@ -39,6 +39,11 @@ export function TestCaseViewPage(): JSX.Element {
   const trustState = useTrustIndex(runId);
   const [state, setState] = useState<LoadState>({ status: 'idle' });
   const [showHistory, setShowHistory] = useState(false);
+
+  const formatIdentities = (identities: ExternalIdentity[] | undefined): string => {
+    if (!identities || identities.length === 0) return '';
+    return identities.map(identity => identity.id).join(' · ');
+  };
 
   useEffect(() => {
     if (runState.status === 'ready' && runState.run && testId) {
@@ -123,6 +128,11 @@ export function TestCaseViewPage(): JSX.Element {
       <div className="test-case-view__header">
         <div className="test-case-view__identity">
           <h1 className="test-case-view__title">{test.title}</h1>
+          {test.identities && test.identities.length > 0 && (
+            <div className="test-case-view__identities">
+              {formatIdentities(test.identities)}
+            </div>
+          )}
           <div className="test-case-view__file-path">{test.location.file}</div>
           <div className="test-case-view__tags">
             {test.tags?.map(tag => (

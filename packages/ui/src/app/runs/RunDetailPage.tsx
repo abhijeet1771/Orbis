@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import type { TestRun, TestCaseResult, TestStatus } from '@orbisreport/core';
+import type { TestRun, TestCaseResult, TestStatus, ExternalIdentity } from '@orbisreport/core';
 import { useRunData } from '../data/useRunData';
 import { useTrustIndex } from '../data/useTrustIndex';
 import { useRegression } from '../data/useRegression';
@@ -424,6 +424,14 @@ export function RunDetailPage(): JSX.Element {
       }
     };
 
+    const formatIdentity = (identity: ExternalIdentity) => {
+      return identity.id;
+    };
+
+    const getIdentityTooltip = (identity: ExternalIdentity) => {
+      return `System: ${identity.system}\nProject: ${identity.projectKey || 'Unknown'}\nSource: ${identity.source}`;
+    };
+
     const getFailureReason = (test: TestCaseResult) => {
       if (!test.failure) return '';
       const message = test.failure.message;
@@ -442,6 +450,18 @@ export function RunDetailPage(): JSX.Element {
           <span className={`execution-index__status-icon execution-index__status-icon--${test.status}`}>
             {getStatusIcon(test.status)}
           </span>
+        </div>
+
+        {/* ID column (optional) */}
+        <div className="execution-index__id">
+          {test.identities && test.identities.length > 0 && (
+            <span
+              className="execution-index__id-value"
+              title={getIdentityTooltip(test.identities[0])}
+            >
+              {formatIdentity(test.identities[0])}
+            </span>
+          )}
         </div>
 
         {/* Test info */}

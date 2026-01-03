@@ -118,6 +118,7 @@ export interface TestCaseResult {
   consoleLogs?: ConsoleLogEntry[];
   network?: NetworkRequestInfo[];
   annotations?: Record<string, unknown>;
+  identities?: ExternalIdentity[]; // Enterprise test case traceability
 }
 
 export interface TestStep {
@@ -191,6 +192,19 @@ export interface NetworkRequestInfo {
     total?: number;
   };
   resourceType?: 'document' | 'stylesheet' | 'image' | 'media' | 'font' | 'script' | 'xhr' | 'fetch' | 'websocket' | 'other';
+}
+
+/**
+ * External Identity - Enterprise test case traceability
+ * Supports multiple systems (Jira, Xray, Zephyr, TestRail, custom)
+ */
+export interface ExternalIdentity {
+  system: 'jira' | 'xray' | 'zephyr' | 'testrail' | 'custom';
+  projectKey?: string;      // e.g. WEBAPP, BOX, SHIELD_CORE (derived)
+  id: string;               // e.g. WEBAPP-12345 (canonical)
+  numericId?: number;       // e.g. 12345 (derived from id)
+  url?: string;             // Optional deep link to external system
+  source: 'annotation' | 'tag' | 'title' | 'mapping';
 }
 
 // Causal Chain models for reverse call hierarchy

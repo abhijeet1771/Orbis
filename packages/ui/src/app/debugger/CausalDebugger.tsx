@@ -140,6 +140,26 @@ export function CausalDebugger(): JSX.Element {
 
   return (
     <div className="causal-debugger">
+      {/* Header */}
+      <div className="causal-debugger__header">
+        <div className="causal-debugger__title">
+          {selectedNode && selectedNode.type === 'failure' && selectedNode.id ? (
+            <span>
+              Failure in {selectedNode.id}
+            </span>
+          ) : (
+            <span>Causal Debugger</span>
+          )}
+        </div>
+        <div className="causal-debugger__meta">
+          {mockTestResult.identities && mockTestResult.identities.length > 0 && (
+            <span className="causal-debugger__identity">
+              {mockTestResult.identities[0].id}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Left Column: Causal Chain Tree */}
       <div className="causal-debugger-left">
         <CausalChainTree

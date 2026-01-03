@@ -112,10 +112,45 @@
 .causal-debugger {
   display: grid;
   grid-template-columns: 320px 1fr 320px;
+  grid-template-rows: auto 1fr;
   gap: 12px;
   height: 100vh;
   padding: 12px;
   background: #06080c;
+}
+
+.causal-debugger__header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #0b0d12;
+  border: 1px solid #1f2533;
+  border-radius: 12px;
+  margin-bottom: 0;
+}
+
+.causal-debugger__title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #e4e7ed;
+}
+
+.causal-debugger__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.causal-debugger__identity {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: #9aa3b5;
+  background: #151925;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #1f2533;
 }
 
 .causal-debugger-left {

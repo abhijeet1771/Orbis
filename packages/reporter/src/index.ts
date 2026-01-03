@@ -26,6 +26,73 @@ import type {
     TestStep,
     TimingInfo
   } from '@orbisreport/core';
+
+  // Simple identity extraction for reporter (avoids cross-package imports)
+  const extractIdentities = (test: TestCaseResult): any[] => {
+    const identities: any[] = [];
+    const idRegex = /\b([A-Z][A-Z0-9_]{1,15})-(\d+)\b/g;
+
+    // Extract from title
+    if (test.title) {
+      const titleIds = extractIdsFromText(test.title);
+      for (const id of titleIds) {
+        identities.push({
+          system: 'custom',
+          id,
+          source: 'title'
+        });
+      }
+    }
+
+    // Extract from annotations
+    if (test.annotations) {
+      for (const [key, value] of Object.entries(test.annotations)) {
+        if (typeof value === 'string') {
+          const annotationIds = extractIdsFromText(value);
+          for (const id of annotationIds) {
+            identities.push({
+              system: key,
+              id,
+              source: 'annotation'
+            });
+          }
+        }
+      }
+    }
+
+    // Extract from tags
+    if (test.tags) {
+      for (const tag of test.tags) {
+        const tagIds = extractIdsFromText(tag);
+        for (const id of tagIds) {
+          identities.push({
+            system: 'custom',
+            id,
+            source: 'tag'
+          });
+        }
+      }
+    }
+
+    // Remove duplicates
+    return identities.filter((identity, index, arr) =>
+      arr.findIndex(i => i.id === identity.id) === index
+    );
+  };
+
+  const extractIdsFromText = (text: string): string[] => {
+    const ids: string[] = [];
+    const idRegex = /\b([A-Z][A-Z0-9_]{1,15})-(\d+)\b/g;
+    let match;
+
+    while ((match = idRegex.exec(text)) !== null) {
+      const [, projectKey, number] = match;
+      const canonicalId = `${projectKey.toUpperCase()}-${number}`;
+      ids.push(canonicalId);
+    }
+
+    return ids;
+  };
   
   const require = createRequire(import.meta.url);
   const { version: playwrightVersion } = require('@playwright/test/package.json');
@@ -107,7 +174,13 @@ import type {
         network: undefined,
         annotations: undefined
       };
-  
+
+      // Extract identities from test data (enterprise traceability)
+      const identities = extractIdentities(testResult);
+      if (identities.length > 0) {
+        (testResult as any).identities = identities;
+      }
+
       aggregate.tests.set(testId, testResult);
     }
   

@@ -10,6 +10,8 @@ import type {
   TestStep
 } from '@orbisreport/core';
 
+import { normalizeIdentities } from './normalize/identity.js';
+
 type RunFixLog = { fixed: boolean };
 
 const STATUS_WHITELIST: TestStatus[] = ['passed', 'failed', 'skipped', 'timedOut'];
@@ -77,7 +79,8 @@ function normalizeTest(test: TestCaseResult, log: RunFixLog): TestCaseResult | u
 
     const timing = normalizeTiming(test.timing);
 
-    return {
+    // Normalize identities (enterprise traceability layer)
+    const normalizedTest = normalizeIdentities({
       ...test,
       status,
       timing,
@@ -87,7 +90,9 @@ function normalizeTest(test: TestCaseResult, log: RunFixLog): TestCaseResult | u
       consoleLogs,
       annotations: Array.isArray((test as any).annotations) ? (test as any).annotations : [],
       failure
-    };
+    }, log);
+
+    return normalizedTest;
   } catch {
     log.fixed = true;
     return undefined; // drop bad test to protect UI

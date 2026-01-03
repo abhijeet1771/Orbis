@@ -42,6 +42,14 @@
   line-height: 1.2;
 }
 
+.test-case-view__identities {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+  font-weight: var(--font-weight-medium);
+}
+
 .test-case-view__file-path {
   font-family: var(--font-family-mono);
   font-size: var(--font-size-sm);
