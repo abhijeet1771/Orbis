@@ -126,6 +126,11 @@ export function buildCausalChain(test: TestCaseResult): CausalChain {
 
   nodes.push(featureNode);
 
+  // Dev assertion: Failure must always be first
+  if (nodes[0]?.type !== 'failure') {
+    console.warn('[orbis] Invalid causal chain order - failure node must be first');
+  }
+
   return {
     rootFailureId,
     nodes
