@@ -1,6 +1,6 @@
 # Academic and industrial literature on change impact analysis (CIA), regression test selection (RTS), test impact analysis (TIA) and test-gap analysis, for Teslon launch readiness (state as of 2026-11-15)
 
-Status: IN PROGRESS (skeleton created first; sections are filled as sources are read).
+Status: COMPLETE for this run (2026-11-15). About 45 sources cited; full texts were unreachable (see legend), so numbers are abstract/snippet level unless marked otherwise.
 
 Verification legend used throughout (IMPORTANT, read first):
 - This session's network blocks every scholarly host (arxiv.org, dl.acm.org, api.crossref.org, dblp.org, api.semanticscholar.org, api.openalex.org, scholar.archive.org, and university PDF hosts such as zhang-sai.github.io and web.eecs.umich.edu were all refused by the egress proxy on 2026-11-15). No full text could be opened. Only a web search tool worked; it returns titles, URLs and a summarised snippet of each page.
@@ -40,10 +40,15 @@ Static vs dynamic vs history vs hybrid: the numbers that exist
 - Kagdi, Gethers, Poshyvanyk (EMSE 2013), "Integrating conceptual and logical couplings for change impact analysis in software": combining IR (conceptual) coupling and co-change (logical) coupling beat either alone. [Mem]. For Teslon: ranking signal only.
 
 ### Inferences
-(pending)
+- No CIA technique in thirty years of literature reports recall near 1.0 against independent truth; the high numbers people quote (e.g. ROSE's 64% top-3 hit rate) are ranking metrics, not completeness. Teslon's TEST+UNCLEAR set must therefore be deliberately over-approximate, and its marketing should never say "precise impact set".
+- History mining (Zimmermann, Ying, Hassan-Holt, TARMAQ) is the literature's main tool for cross-language and non-code coupling. It fits Teslon only as a veto (raise SKIP to UNCLEAR), never as a proof, and Rex shows it can be done deterministically and offline.
+- Hybrids help ranking by 10-40 points (Gethers 2012) but none prove completeness; Teslon gains nothing for safety by adding more heuristic sources, only for ordering.
+- The field's own evaluation weakness (small subjects, co-change truth, no shared benchmark) is the same weakness Teslon has; Teslon publishing a cross-stack PR-impact benchmark with external truth would be a genuine contribution.
 
 ### Gaps
-(pending)
+- Full texts of Li et al. 2013, Lehnert 2011, Bohner-Arnold 1996, Hassan-Holt 2004, Ying 2004 and Kagdi 2013 could not be opened (network block); their per-technique precision/recall tables are not in these notes. Items tagged [Mem] need checking before they go in a report.
+- Cai and Santelices: the search summary (38-50% precision, 50-56% recall) conflicts with the council note (47-52% precision); unresolved.
+- No 2024-2026 software-specific systematic review of code-level CIA was found (the 2021 JSS mapping study by Kretsou et al., 111 papers, is the newest found: https://sites.uom.gr/a.ampatzoglou/public_html/papers/kretsou2021jss.pdf [S]).
 
 ## Q2. Safety of RTS and what breaks it
 
@@ -71,10 +76,14 @@ Configuration, environment and non-code inputs
 
 
 ### Inferences
-(pending)
+- The literature's safest static selectors work at class/module granularity on single-language Java libraries. Teslon makes much finer claims (one screen, one endpoint) across Java, TypeScript, YAML, SQL migrations and messaging. Nothing published shows that granularity can be safe statically; Teslon's certificate-plus-checker design is the right shape, but it is unproven at that granularity until measured.
+- Spring is reflection-heavy (DI, proxies, Jackson, JPA, AOP). Given that reflection was the sole cause of static RTS misses, each Spring idiom Teslon models is a safety-critical rule that needs its own probe set; each idiom it does not model must produce an unknown site.
+- Configuration and dependency changes are the two change classes where research found static code analysis structurally blind (uRTS, ctest, Gyori). Teslon reads YAML and Maven, which puts it ahead of classic RTS, but the burden is to show config keys resolve to readers per profile, and to hold when they do not.
 
 ### Gaps
-(pending)
+- Exact unsafety counts for STARTS (Legunsen 2016) and the unsafe percentage in Shi 2019 were not visible; the council's 85.8%/69.1% figures are secondary.
+- The "controlled regression testing assumption" wording was not confirmed in a snippet; stated from memory.
+- No study of RTS safety for Spring/JPA/Kafka enterprise apps or for Angular/Vue front ends was found.
 
 ## Q3. Web apps, UI, microservices, end-to-end tests, database schema and configuration
 
@@ -103,10 +112,13 @@ Configuration
 
 
 ### Inferences
-(pending)
+- Teslon's cross-stack chain (DB column -> repository -> endpoint -> HTTP client -> component -> route/screen) has no published end-to-end evaluation in the literature; each hop has partial precedent (Maule for schema, Tochal for JS events, Cerny for services) and each precedent reports specific failure points (dynamic SQL, runtime-registered events, name-based joins).
+- The closest analogue to Teslon's users (Nakagawa 2019, manual E2E of commercial web apps; Elsner 2022, 20 manual E2E tests on Corona-Warn-App) used recorded traces, not static analysis, and reported effort savings, not safety bounds.
 
 ### Gaps
-(pending)
+- Full texts of Nakagawa 2019 and Tochal 2015 were not reachable; their precision and miss numbers are missing.
+- No published dataset maps code changes to affected screens or UI flows with ground truth.
+- No study of Feign/Kafka-level static change impact with measured recall was found (the council's microSecEnD/Code2DFD recall numbers concern architecture extraction, not change impact).
 
 ## Q4. Industrial reports (Google, Meta, Microsoft, SAP, Ericsson, others)
 
@@ -131,10 +143,14 @@ No large company claims a safe (zero-miss) selector in production. Every industr
 - Uber, Spotify, Dropbox, Salesforce: no primary engineering-blog or paper on test selection miss rates was found in this run [gap].
 
 ### Inferences
-(pending)
+- Industry's accepted miss budgets (Meta up to 0.1% of faulty changes, FastLane 1 in 10,000 predicted outcomes, Shopify 0.06% of failures, Teamscale 10% of failed builds in the fast subset) all sit on top of a later, fuller run. Teslon's output to manual testers has no such backstop, so Teslon must hold itself to a stricter standard than any of these, or ship SKIP as "deprioritise" rather than "skip".
+- The pattern that recurs at Google, Shopify and Microsoft is: coarse conservative graph, measured misses, each miss root-caused and fixed. That is an achievable launch posture for Teslon ("we publish every wrong skip and its fix"), whereas "never a wrong skip" is not demonstrable.
+- Directory proximity (Google) and generic history heuristics do poorly; dependency structure is what works, which supports Teslon's static-graph approach.
 
 ### Gaps
-(pending)
+- Memon 2017's failure rate for targets beyond distance 10, and Microsoft's TIA fall-back rules, were not visible.
+- No primary source on Uber, Spotify, Dropbox, Salesforce or SAP (beyond HANA coverage work) test-selection miss rates was found.
+- Stripe's original post was not reached.
 
 ## Q5. Manual and system-level test selection, test-gap analysis
 
@@ -152,10 +168,14 @@ The only sustained research line aimed at manual testers is the TUM/CQSE/Saarlan
 
 
 ### Inferences
-(pending)
+- Test gap analysis and Teslon answer different questions: TGA lists changed code that no test executed (needs a running, instrumented app); Teslon lists areas to test or skip without running anything. They are complementary: TGA's per-test coverage would be an independent oracle for Teslon's skips (the council's R6 runtime layer), and Teslon could give TGA a "where to look" layer for gaps.
+- The test-manager pitch ("half of changes ship untested; they carry up to five times more defects") rests on one 2013 C# system; it is persuasive but must be cited as a single case.
+- The Haas 2024 design (historical failures from industrial partners, detection rate, time saved, adoption) is the most directly copyable validation protocol for Teslon's first enterprise pilot.
 
 ### Gaps
-(pending)
+- The 2011 Juergens paper's quantitative results (how much changed code testers' manual selection missed) were not visible.
+- The detection rate for manual suites in Haas 2024 was not visible (only the 43% average time saving).
+- No study of a static, execution-free tool for manual testers was found.
 
 ## Q6. LLM-era work 2023-2026
 
@@ -174,10 +194,14 @@ The only controlled measurement of an LLM doing code-level change impact analysi
 
 
 ### Inferences
-(pending)
+- The evidence base for LLM change impact analysis is small but negative: median F1 0.0 on 40 labelled commits. Teslon's "no LLM in any decision" is supported by evidence, and is a selling point in regulated enterprises.
+- LLMs are being used in research to cut impact sets for precision (Ripple), which is precisely the operation that creates wrong skips in Teslon's setting. If Teslon ever adds an LLM, it may only add candidate areas or phrase checks, never remove areas.
+- There is no ground-truth benchmark for "what should be tested for this PR" at screen/API level; building one is an open opportunity.
 
 ### Gaps
-(pending)
+- Ripple's (ICSE 2026) numbers were not visible.
+- Meta DRS details are from a 2026 preprint summary; not peer-reviewed in what was seen.
+- No study measuring LLM hallucination rate or run-to-run reproducibility in change impact analysis specifically was found; reproducibility claims for LLM tools remain unmeasured in this literature.
 
 ## Q7. Theses
 
@@ -199,10 +223,13 @@ The PhD theses that matter are from the Illinois/Texas RTS group (Gligoric 2015,
 
 
 ### Inferences
-(pending)
+- The thesis literature confirms the gap: there is RTS theory and practice (Gligoric), industrial test optimisation for manual and system tests (Elsner, Haas, Bach), and rule-based cross-artefact CIA (Lehnert), but no thesis on static change-to-screen impact for enterprise web stacks. Teslon's design sits at the intersection; Lehnert's rule catalogue and Gligoric's evaluation methodology are the two most reusable bodies of work.
+- The 27% unsafe rate of developers' manual selection (Gligoric 2014) is the most useful baseline number for Teslon's audience: it lets Teslon claim "safer than today's practice" once measured, without claiming perfection.
 
 ### Gaps
-(pending)
+- Legunsen's PhD thesis title and year were not found; Maule's UCL thesis URL not captured.
+- No MSc or PhD thesis specifically on microservice change impact with an evaluation dataset was found (only an unlinked TUM MSc title).
+- Full texts were not opened; thesis claims are at abstract level.
 
 ## Q8. Evaluation methodology, and the evidence standard for "safe to skip"
 
@@ -260,6 +287,18 @@ Statistics of "zero misses"
 9. Report three numbers, never one: wrong-skip rate (with its 95% upper bound), extra-test rate, and abstention (UNCLEAR) rate, each per stratum; a selector that holds everything is trivially safe and useless. [Hattori 2008 precision/recall framing; inference]
 10. Compare against the human baseline on the same PRs: testers' own unaided selection was unsafe in 27% of sessions in the only field study; showing Teslon is safer than the status quo is a meaningful, achievable claim even before an absolute bound is tight. [Gligoric 2014]
 11. Industry miss budgets for context only: Meta accepts up to 0.1% of faulty changes and 5% of failures escaping the selected set; Microsoft FastLane 99.99% predicted-outcome accuracy; Teamscale TIA 90% of failed builds in the fast subset. All of these have a later full run behind them; a manual-QA skip does not, so these budgets are an upper bound on what Teslon could ever accept, not a target. [Machalica 2019; Philip 2019; Juergens 2018]
+
+### Techniques worth adopting (ranked by value for Teslon's launch; each traceable to a source above)
+1. Change-kind catalogue for fine-grained skips (FineRTS, ISSTA 2023): admit a SKIP inside a changed module only for change kinds proven behaviour-preserving, each kind backed by probes; everything else at least UNCLEAR.
+2. RTSCheck-style differential rule checking of engine and checker on generated evolutions (ICSE 2019), run in CI.
+3. Correlated-change rules as an UNCLEAR-raising guard (Rex, NSDI 2020; ROSE/TARMAQ): deterministic association rules over the repo's history; show "these files changed together in k of n commits; this PR changed only some".
+4. Config keys as first-class graph nodes per profile, including code+config co-changes (uRTS, ICSE 2023; ctest, OSDI 2020).
+5. Schema-to-code dataflow with a "warning" class for behaviour-changing but non-breaking impacts (Maule, ICSE 2008).
+6. A Legunsen/Haas-style external validation: open-source Spring+Angular/Vue apps with E2E suites (and, at a pilot, a partner's historical failures), hundreds of real commits, a run-more reference, flaky filtering, and rule-of-three bounds per stratum.
+7. Test-gap style reporting for test leads: per PR or ticket, changed areas vs tested areas ("ticket coverage", Rott 2017), with risk ordering of TEST areas (Haas, TSE 2025).
+8. Human-baseline comparison: measure testers' unaided selection on the same PRs (Gligoric, ASE 2014) and report Teslon's miss rate next to it.
+9. Miss ledger with root causes, published (Shopify's approach): each wrong skip becomes a probe and a fixed rule.
+10. Do not adopt: LLM-based pruning of impact sets (Ripple-style precision step), directory-proximity heuristics (Leong 2019), raw SZZ labels without manual validation (Herbold 2022), or ML risk scores as skip evidence (Meta DRS, FastLane).
 
 ### Inferences
 - The council's lattice (SKIP < UNCLEAR < TEST; only static proof creates SKIP) is the literature's consensus position restated; no paper found argues that history, coverage or LLMs can prove a skip.

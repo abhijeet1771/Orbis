@@ -18,7 +18,17 @@ Working folder: /tmp/claude-0/-home-user-Orbis/a99ca81c-9750-554d-8faa-4222ad38b
 
 ## 3. Misclassification findings for kinds.ts
 
-(filled as found)
+Static hunt first (a Python port of `fileKind`, kinds.ts:8-40, run over `git ls-files` of each clone; script
+`field/unread/py/kinds.py` + `py/inert_scan.py`, output `field/unread/out/inert_scan.txt`). Each item is then
+confirmed by running Teslon where marked.
+
+| # | Path (repo) | kinds.ts says | Truth | Rule (kinds.ts line) |
+|---|---|---|---|---|
+| K1 | `ts-voucher-service/requirements.txt`, `ts-avatar-service/requirements.txt` (train-ticket) | docs: "documentation: the running app does not read it" | Python dependency manifest; `pip install -r` in the service image decides what runs | line 15: any `*.txt` outside a served folder is docs |
+| K2 | `.github/workflows/deploy-cloud.yaml` (saleor-dashboard) | ci: "changes how the project is checked, not what the app does" | builds and ships the dashboard; sets build-time `API_URL`, `APP_MOUNT_URI`, `STATIC_URL`, `EXTENSIONS_API_URL`, `CLOUD_API_URL` that are baked into the bundle (lines 37-49) | line 18: everything under `.github/` is CI |
+| K3 | `packages/@n8n/cli/skills/n8n-cli/SKILL.md` (n8n) | docs | shipped in the npm package (`"files": ["bin","dist","skills"]`) and read at run time by `n8n-cli skill install` (`packages/@n8n/cli/src/commands/skill/install.ts:33-39`) | line 15: `*.md` is docs |
+
+(more rows below as they are confirmed)
 
 ## 4. Deep I2 checks (n8n, halo)
 
