@@ -14,7 +14,61 @@ Working folder: /tmp/claude-0/-home-user-Orbis/a99ca81c-9750-554d-8faa-4222ad38b
 
 ## 2. Confirmed violations (full)
 
-(filled as found)
+Command for every row: `env -u GITHUB_TOKEN -u GH_TOKEN node field/unread/bin/child.mjs <repo> <sha>^ <sha>` (wraps `impact()` + `brief()`),
+raw output in `field/unread/out/<repo>/<sha>.json`. Truth written first in `field/unread/truth/targeted.md`.
+
+### V1 (I1, I5) microservices-demo e3da442: a Python dependency bump answered "nothing to test", confidence High
+- Commit (real, 2026-08-11): "chore(deps): bump cryptography in /src/shoppingassistantservice (#3471)"; only change
+  `src/shoppingassistantservice/requirements.txt`: `cryptography==46.0.5` -> `cryptography==50.0.0` (four major versions).
+- Teslon: `appEffect: 'none'`, summary "No effect on the running app: 1 file (docs).", brief test 0 / skip 0 / unclear 0, `none: true`,
+  confidence **High** ("No changed file reaches the running app: 1 file (docs)."). Ledger: `requirements.txt  no-runtime-effect  docs
+  "documentation: the running app does not read it"`. `r.unseen` empty.
+- Truth: `src/shoppingassistantservice/Dockerfile:27-28` copies it and runs `pip install -r requirements.txt`; the service behind the
+  frontend's `/assistant` page (`src/frontend/main.go:158`) runs on the new library. A wrong "nothing to test" with High confidence and
+  no unseen note: the exact failure the promise forbids.
+- Cause: kinds.ts:15 `if (/\.(md|mdx|txt|rst|adoc)$/i.test(f) && !served) return 'docs';` then kinds.ts:45 `noAppEffect('docs')`.
+  The confidence comes from areas.ts:214 (High whenever appEffect is 'none'). Python is not even detected as an unread stack, so nothing
+  lowers it.
+- Fix: classify dependency manifests by name before the extension rule (`requirements*.txt`, `constraints*.txt`, `Pipfile*`,
+  `pyproject.toml`, `poetry.lock`, `go.mod/go.sum`, `Cargo.*`, `Gemfile*`, `composer.*`, `*.csproj`, `packages.lock.json`,
+  `Directory.Packages.props`, `CMakeLists.txt`, `mix.exs`) as `dependencies` with no rule = not-modelled; and make 'docs' an allowlist
+  (README/CHANGELOG/LICENSE files, `docs/`), not "any .txt".
+
+### V2 (I1, I5) saleor-dashboard cc89355: the fix for a crashing screen answered "nothing to test"
+- Commit (real): "fix: restore the useState import on Create voucher (#7067)"; only change `+import { useState } from "react";` in
+  `src/discounts/views/VoucherCreate/VoucherCreate.tsx`.
+- Teslon: `appEffect: 'none'`, "No effect on the running app: 1 file (frontend).", `none: true`, 0/0/0. Ledger: `no-runtime-effect`
+  "only blank lines, comments or imports changed". Confidence Partial only because a React front end exists in the repo
+  ("The React front end is not read ..."); the PR comment still prints "Nothing to test in the app" (render.ts:51).
+- Truth: without the import the view throws `ReferenceError: useState is not defined` when it renders; the commit repairs the Create
+  voucher screen. Must be "test Create voucher".
+- Cause: impact.ts:569 `meaningful()` treats any line starting with `import ` (and `package `, `#`, `//`, `*`) as not code; where.ts:54
+  `trivial()` does the same. In a stack Teslon cannot read, it still decided the change was inert.
+- Fix: never drop `import`/`package`/`#` lines from the "real lines" count. At most, mark an import as followed when the reader proves
+  the imported name is unused in both commits; for unread languages, never.
+
+### V3 (I1, I5) train-ticket synthetic 44118c5: requirements.txt pin answered "nothing to test"
+- Synthetic (local copy): `ts-voucher-service/requirements.txt` `tornado` -> `tornado==5.1.1`; the service Dockerfile line 10 runs
+  `pip install --no-cache-dir -r requirements.txt`.
+- Teslon: `appEffect: 'none'`, 0/0/0, ledger docs "documentation: the running app does not read it". Confidence Partial only because of the
+  AngularJS note. Same cause and fix as V1.
+
+### V4 (I1, I5) saleor-dashboard synthetic 67cc88b: the deploy workflow's build-time API URL answered "nothing to test"
+- Synthetic: `.github/workflows/deploy-cloud.yaml` `EXTENSIONS_API_URL` `.../api/v1/extensions` -> `.../api/v2/extensions`. That workflow
+  builds (`pnpm run build`, line 93) and ships the bundle with this env (lines 37-49).
+- Teslon: `appEffect: 'none'`, ledger `ci` "CI pipeline: it changes how the project is checked, not what the app does".
+- Cause: kinds.ts:18 `^\.github/` -> ci, kinds.ts:46. Fix: a workflow that builds or deploys the artifact (`docker build`/`push`,
+  `npm run build` followed by an upload/deploy step, `kubectl`, `helm`, `terraform apply`, `env:` keys read by the build) is `deploy`, not `ci`;
+  at least, any `env:` change in such a workflow is held.
+
+### V5 (I3) halo 3ec858d: crash (uncaught SyntaxError) on a Dockerfile-only commit
+- Teslon: process exits 1: `SyntaxError: Invalid regular expression: /(^|[^\w$.])"["(?![\w$])|\b(this|PHYSICAL_KEY_CODES)\."["(?![\w$])/:
+  Unmatched ')'` at `dist/engine/certify.js:941` (source certify.ts:666).
+- Cause: a member name taken from `ui/packages/editor/src/utils/keyboard.ts` (an object key `"["`) is put into a RegExp unescaped; only `$` is
+  escaped. Any commit whose certification walks that file crashes; the commit content is irrelevant.
+- Fix: escape the full RegExp metacharacter set (`s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`), and wrap `certify()` so an exception holds
+  every area with an unseen note instead of killing the run.
+
 
 ## 3. Misclassification findings for kinds.ts
 
@@ -36,7 +90,14 @@ confirmed by running Teslon where marked.
 Real commits that hit K4 alone (requirements.txt is the only changed file): microservices-demo e3da442 (cryptography 46.0.5 -> 50.0.0) and
 0359b90 (pyasn1). Commits that hit K4 with requirements.in beside it: otel-demo 7a07d9f, b427585, 3598ba9, b752faf, ab744b2, bc22a44.
 
-(more rows below as they are confirmed)
+| K8 | `packages/cli/src/license.ts` (n8n, 663 lines, `export class License implements LicenseProvider`, every enterprise feature gate `isLicensed()` at line 318) | docs | the licence service of the back end | line 13: basename `LICENSE(\.\w+)?` case-insensitive, so `license.ts` is "documentation" |
+| K9 | `api/src/main/java/run/halo/app/infra/model/License.java` (halo; used by `Plugin.java`, `Theme.java` specs, shown at `ui/console-src/modules/system/plugins/components/tabs/Detail.vue:301`), `ui/packages/api-client/src/models/license.ts` | docs | a model class serialised in the Plugin and Theme APIs | line 13 |
+| K10 | `packages/frontend/@n8n/design-system/src/components/N8nNotice/Notice.vue`, `packages/frontend/editor-ui/src/app/constants/notice.ts` (n8n) | docs | a Vue component used across the editor; app constants | line 13: `NOTICE` |
+| K11 | `packages/modules/insights/frontend/src/components/charts/*.vue` (6 files, n8n Insights dashboard) | deploy | Vue components of a screen | line 21: any folder named `charts/` is a Helm chart |
+| K12 | `packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/changelog.json` (n8n) | docs | node output schema shipped with the node | line 13: `CHANGELOG` |
+| K13 | `utilities/tools.descartes.teastore.dockerbase/ssl/generate_cert.sh` (TeaStore) | tooling (word "generate") | makes the certificate the image imports (Dockerfile:43 says re-run it and rebuild) | line 30 |
+
+K8 confirmed on the engine with a synthetic commit on halo License.java (see V6 below when run).
 
 ## 4. Deep I2 checks (n8n, halo)
 
