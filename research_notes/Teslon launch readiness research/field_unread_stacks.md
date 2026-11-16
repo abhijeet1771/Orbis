@@ -10,7 +10,50 @@ Working folder: /tmp/claude-0/-home-user-Orbis/a99ca81c-9750-554d-8faa-4222ad38b
 
 ## 1. Summary table per repository
 
-(filled as each repository finishes)
+Last 20 non-merge commits each (coordinator cut from 40 to 20 for budget), base = parent, 180 s timeout, one process at a time.
+"Held entirely" = no area to test or skip and at least one unclear. "Some precise answer" = at least one area to test or skip.
+"Zero areas" = the brief has 0 test, 0 skip, 0 unclear (only the ledger/unseen text says anything).
+
+| Repo | Stack | Commits run | Crash / timeout | I1 | I2 | I4 | I5 | Held entirely | Some precise answer | Zero areas |
+|---|---|---|---|---|---|---|---|---|---|---|
+| halo | Spring WebFlux functional routes (Java) + Vue 3 | 20 + 1 targeted | **21 / 21 crash** (V5) | n/a (no answer) | not testable (crash) | - | K9 (License.java = docs) | - | 0 % | - |
+| n8n | Node/TS back end + Vue 3 | 2 attempted | **2 / 2 timeout** (180 s, then 1,200 s) (V6) | n/a | not testable | - | K3, K8, K10, K11, K12 | - | 0 % | - |
+| eShop | .NET 10 / Blazor / Aspire | 20 | 0 | 0 strict ('none' only on a README commit), but V7 | 0 skips | V7 (no stack named) | K-none new | 0 % | 5 % (1/20, screen:* from a CSS file) | **90 % (18/20)** |
+| train-ticket | Spring (read) + AngularJS static UI + Python/Node/Go services | 20 + 2 | 0 | 0 in history; V3 synthetic | 0 (no skip ever given) | 4785de2, fa8d9ef wrong file reasons | K1, K7 (fa8d9ef) | 0 % | 65 % (13/20; tests only, never a skip) | 25 % (5/20) |
+| saleor-dashboard | React | (see below) | | V2 | | | K2/V4 | | | |
+| microservices-demo | Go/C#/Python/Node | 1 targeted | 0 | **V1** | - | V1 | K4, K6 | | | |
+
+Per-repository detail follows in section 1a.
+
+### 1a. Per-repository notes
+
+**halo (V5).** Every one of the 20 history commits and the Dockerfile-only 3ec858d exits with the same uncaught
+`SyntaxError: Invalid regular expression ... "[" ... PHYSICAL_KEY_CODES` from certify.js:941, including 8211556 which touches only
+`SECURITY.md` and an issue form. The trigger is a file that has existed since 2026-08-14 (`ui/packages/editor/src/utils/keyboard.ts:48`
+`"[": ["BracketLeft"]`), so Teslon has not produced a single halo report for three months of history. Fail-closed in the sense that no
+wrong skip is shown, but the Action would fail every PR. The I2 deep check on halo (truth in `field/unread/truth/halo_deep.md`: e6da398
+disable-user -> /users, /users/:name; 1c678e7 generic PUT/PATCH -> every edit screen; d7bf329 stats -> dashboard; 8f40bb6 theme
+endpoint -> theme screens) could not be run: no answer exists to compare. Static note for when the crash is fixed: halo screens call the
+back end through the generated `consoleApiClient.*`/`coreApiClient.*` (e.g. `UserList.vue:161 consoleApiClient.user.disableUser`), which
+the Vue reader neither records as a call nor as opaque (vue.ts:197 `OPAQUE_CALL` lists `useQuery` but not API-client objects); a screen
+that does not also use `useQuery` would read as "calls no API" and be skippable whenever every changed line counts as followed.
+
+**n8n (V6).** No answer in 20 minutes for a 7-file commit. I2 deep check (truth in `truth/n8n_deep.md`: 00d090c6, e11a2596, a71a1164,
+1b530a9f) not runnable. By the code, a back-end `.ts` file is kind `frontend` (kinds.ts:38) and, unreached by any screen, is pushed to
+unseen as "no screen this build can see imports or draws it" (where.ts ~1462) and stays not-modelled, so all screens would be held, not
+skipped; the reason text would mislead (it is a Node back end, not a front-end file).
+
+**eShop (V7).** No crash; 18 of 20 commits change C#/Razor/.csproj, the ledger marks those files `not-modelled` and appEffect is
+`unknown`, confidence Partial. But Teslon knows no screen, API or job in a .NET app, so the brief has **zero areas**: test 0, skip 0,
+unclear 0. The held state lives only in the ledger. Every unseen note says "no rule in this build follows other changes like this ...";
+none says "C#/.NET is not read". Only b4a4087 (README) got 'none'/High, correctly.
+
+**train-ticket.** No crash, no skip in any commit (the AngularJS UI is detected as unread, so no screen is ever skipped), 13/20 with
+concrete Java test areas. Wrong file-level reasons inside bigger commits: 4785de2 calls `ts-avatar-service/requirements.txt`
+documentation; fa8d9ef ("Reconstruction") calls `AdminOrderService.java` "only blank lines, comments or imports changed" while the only
+change is `import adminorder.entity.*;` -> `import edu.fudan.common.entity.*;`, which swaps every entity class the service uses (K7).
+b9030d1 (`hack/clean-image.sh`, tooling) -> 'none' is correct (a local image-cleanup script). 921a440 and 60af219 (`hack/*.sh`,
+Makefile) hold correctly but with zero areas.
 
 ## 2. Confirmed violations (full)
 
