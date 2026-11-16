@@ -104,7 +104,23 @@ JHR: 3 of 4 under TEST, 1 SILENT. None was sent to QA with a specific check: the
 
 ## Failures in full, with reproductions
 
-(pending)
+All commands run from the working folder with the built engine, read-only:
+`cd /tmp/claude-0/-home-user-Orbis/a99ca81c-9750-554d-8faa-4222ad38b407/scratchpad/field/readable && env -u GITHUB_TOKEN -u GH_TOKEN node scripts/run1.mjs repos/<app> <sha>^ <sha> out.json && node scripts/show.mjs out.json --ev`
+(repos/sba = `git clone --depth 400 https://github.com/codecentric/spring-boot-admin` then `git fetch --deepen=2500`; repos/jhr = `git clone --depth 400 https://github.com/jhipster/jhipster-registry`).
+
+| # | Failure | Repro (repo, SHA) | What you see | Engine file (inference from reading the source) |
+|---|---|---|---|---|
+| F1 | Vue view registry not read: `component: this` inside `install()`, `@/` alias imports, parent-by-name child views | sba faf078d (UI change to /instances/:id/details) | areas = only the sample `/custom`, `/customSub`, `custom`; the changed files are "no screen this build can see imports or draws it". 0 of 33 product screens ever known | vue.ts:364-380 (route needs an identifier or relative lazy import), vue.ts:201 `resolveRel` returns null for any non-relative spec (484 of 564 SBA imports), no `addView`/`parent` composition |
+| F2 | Custom controller stereotype not recognised | sba 991a28b (proxy header filter, reaches every `/instances/{id}/actuator/**` call) | 0 APIs in any SBA run; "HttpHeaderFilter reaches no API, job, AI tool or screen" | spring.ts:287 requires `@RestController`/`@Controller` on the type; SBA's `@AdminController` (no meta-annotation; mapped by `AdminControllerHandlerMapping`) is invisible |
+| F3 | Angular `Route` constants in `forChild([xRoute])` not read | jhr c78cd8f (changes /registry/config) | only `/error`, `/accessdenied`, `/404` exist; 13 feature screens never appear; config.component.ts "no screen this build can see" | angular.ts:390-428 `routeArray` skips identifier elements; angular.ts:459-463 only takes array-typed consts. Standard JHipster 6/7 output |
+| F4 | Test-source controllers counted as product APIs | jhr 78196a0 | `api:GET /api/exception-translator-test/*` (x7), `/api/test-cors`, `/test/test-cors`, `ANY /test` listed TEST | spring.ts endpoint collection does not exclude `src/test/java` |
+| F5 | False "service may not start" claim | jhr 6bce269 | delta "TokenProvider is no longer a bean (@Component removed), and UserJWTController needs it" while JWTSecurityConfiguration.java:157-159 has `@Bean public TokenProvider tokenProvider()` | startup.ts:105-108 checks stereotype removal without looking for `@Bean` factory methods of the type; `@Profile` not modelled |
+| F6 | Spring config class read as a JSON contract | jhr feefd72 | `response-shape-changed`: "JWTSecurityConfiguration: JSON field authenticationManagerBuilder is no longer sent or read" | shape.ts (DTO detection accepts a `@Configuration` class) |
+| F7 | Build-only Maven plugins treated as runtime dependency changes | jhr 5656a7e (jib-ownership-extension), sba 54b010a (versions-maven-plugin 2.24.0 -> 2.25.1) | every API (JHR, "High" confidence) or `module:*` (SBA) listed TEST | dependency delta does not separate `<build><plugins>` from runtime `<dependencies>` (impact.ts / dataflow.ts dependency handling) |
+| F8 | Framework endpoints and config-driven behaviour are silent | jhr 78196a0 (CORS for /config/**, /eureka/**), jhr 65769e7 (Spring Boot 2.2 broke /admin/health), jhr 5656a7e (`logging.file.name` removed) | no area, no unseen note, confidence "High" | no area kind for Spring Cloud Config / Eureka / actuator endpoints; config keys "followed" without consequence |
+| F9 | Crash on vendored large JS | jhr f41e6de, a6bed82 (2017, `bower_components/angular/angular.js` 1.1 MB) | `RangeError: Maximum call stack size exceeded at visit (dist/engine/vue.js:268)`; no report | vue.ts recursive AST visitor; vendored folders (`bower_components`) not excluded (vue.ts:234 excludes node_modules, dist, build, target only) |
+| F10 | Checker cost quadratic in front-end members | any sba commit, e.g. faf078d | 128-165 s per commit (lab limit 180 s); `node --cpu-prof`: 120 of 143 s in certify.js:937-938 | certify.ts:~660-668 rebuilds the set of every line of every member for each member pair (O(M^2 x L)), even with 0 skips to certify |
+| F11 | Snapshot files not treated as tests | sba f3daa75 | `__snapshots__/health-details.spec.ts.snap` ledgered `other`/not-modelled, making the PR "unknown" | file-kind classification (impact.ts ledger kinds) |
 
 ## Step F. Verdict
 
