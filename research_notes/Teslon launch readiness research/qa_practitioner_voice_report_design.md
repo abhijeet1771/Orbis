@@ -226,6 +226,11 @@ The shipped PR comment gets the first ten seconds mostly right (Test / Skip / Un
 | Test manager | A one-glance verdict. A determinism and audit footer. Evidence verification count. | A release or build roll-up. Trends (escape rate in skipped areas, scope reduction over time, cycle time). Cost or time saved. A sign-off or export artefact (PDF/CSV). Who accepted each skip. Teslon's own measured accuracy in the report (REPORT-CHECKLIST E5 ◐). | ✅ for skip. "High confidence" with an unread config repo. No statement of what Teslon does not cover, in manager terms ("security rules are not checked"). |
 
 
+
+### Gaps
+- Judged on one PR (spm #559, a validation change). Outputs for a PR with unread stacks, large AI-written PRs, or Angular/OrderDesk were not rendered (time budget). Rendering 2-3 more PR types would test whether G2 (confidence) and G10 (module buckets) get worse at scale.
+- The real `renderHtml` cockpit was read only for its CSV export (`html.ts:492-497`). The `report-cockpit.html` sample is a hand-built mock, so its lenses and risk sort are not credited to the shipped product.
+
 ## 7. Recommended information architecture: what each persona sees first
 
 ### Takeaway
