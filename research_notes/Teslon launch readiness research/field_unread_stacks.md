@@ -61,6 +61,16 @@ raw output in `field/unread/out/<repo>/<sha>.json`. Truth written first in `fiel
   `npm run build` followed by an upload/deploy step, `kubectl`, `helm`, `terraform apply`, `env:` keys read by the build) is `deploy`, not `ci`;
   at least, any `env:` change in such a workflow is held.
 
+### V6 (I3) n8n: one commit does not finish in 20 minutes
+- `timeout 180 node child.mjs repos/n8n 51f8cf62^ 51f8cf62` killed at 180 s; then `timeout 1200 ... 251c44bc^ 251c44bc` killed at
+  1,200 s (`real 20m0.09s, user 16m49s, sys 2m47s, exit 124`). n8n at depth 80: 34,862 tracked files.
+- Cause: snapshot.ts:36-45 spawns one `git show <sha>:<path>` per file read, per side; the readers read every candidate file of both
+  commits, so a 35k-file monorepo means tens of thousands of process spawns before any rule runs.
+- Effect: on n8n, the 20-commit history run and the I2 deep check are impossible within any sane CI budget; a GitHub Action job
+  would sit for 20+ minutes per PR (if it finishes at all). Not silent (the process is killed), but useless.
+- Fix: read blobs through one `git cat-file --batch` process (or `git archive` once per side), read only files reachable from the change
+  plus the route/manifest files, and add a time budget that ends with "held: did not finish reading" rather than nothing.
+
 ### V5 (I3) halo 3ec858d: crash (uncaught SyntaxError) on a Dockerfile-only commit
 - Teslon: process exits 1: `SyntaxError: Invalid regular expression: /(^|[^\w$.])"["(?![\w$])|\b(this|PHYSICAL_KEY_CODES)\."["(?![\w$])/:
   Unmatched ')'` at `dist/engine/certify.js:941` (source certify.ts:666).
