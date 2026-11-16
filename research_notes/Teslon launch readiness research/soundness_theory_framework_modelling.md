@@ -1,6 +1,6 @@
 # Can a static PR-impact tool be "100% accurate"? Soundness theory, framework modelling, and how Teslon's checker compares (state of knowledge Nov 2026)
 
-Author: soundness/framework-modelling researcher. Started 2026-11-15. Status: IN PROGRESS (sections appended as each question is finished).
+Author: soundness/framework-modelling researcher. Started 2026-11-15. Status: COMPLETE 2026-11-16 (lean pass; scholarly hosts and docs.spring.io blocked, so many claims are [S] or [Mem]).
 
 Evidence tags used on every claim:
 - [V] verified by reading the primary source in this session (local file with file:line, or a fetched page)
@@ -111,3 +111,147 @@ What each build-time source would prove for Teslon (my assessment):
 - Full Spring, Angular and GraalVM docs could not be fetched (docs.spring.io and other doc hosts are blocked from fetch in this session); claims rest on search snippets. The exact AOT output layout is [Mem].
 - JackEE's and Jasmine's precise recall figures on Spring apps were not visible.
 - No paper found that measures the recall of a Spring-aware call graph against a dynamic baseline on real Spring Boot services. This is a gap Teslon could fill and publish.
+
+## Q4. Proving "no behaviour change": what gives a sound "nothing changed" verdict cheaply
+
+### Takeaway
+Only one family gives a sound AND cheap "nothing changed" verdict: identity of what the real compiler produces (normalised bytecode / emitted JS), as in trivial compiler equivalence and Ekstazi's smart checksums. It is sound but very incomplete (it proves "same" only when the output is identical). Semantic equivalence provers (regression verification, SymDiff, differential symbolic execution) are sound but undecidable in general, have no production Java/Spring tool, and assume a closed program that framework reflection breaks. Refactoring detectors and AST diffs (RefactoringMiner, GumTree) classify edits; they do NOT prove behaviour preservation, and in Spring apps renames routinely ARE behaviour changes. Measured in this session: Teslon's source-token identity check, which it uses as its "nothing changed" verdict, is not compiler identity and gives a silent wrong answer on a compiler-accepted behaviour change.
+
+### Cited Findings
+- Godlin and Strichman, "Regression Verification", DAC 2009, pp. 466-471; journal version STVR 23(3):241-258 (2013): proving equivalence of closely related versions "has the potential of being easier in practice than functional verification, although both problems are undecidable"; easier because no specification is needed, the problem decomposes, and an automatic invariant handles loops/recursion "in most practical cases"; prototype for C. — [Microsoft Research page](https://www.microsoft.com/en-us/research/?p=181920); [Strichman grand-challenge PDF](https://ofers.dds.technion.ac.il/publications/grand-challenge.pdf) [S]
+- SymDiff (Lahiri et al., Microsoft Research): differential program verifier at the Boogie level using mutual summaries and product programs; differential assertion checking (FSE 2013) reduces two-version checking to safety checking of a composed program. — [SymDiff project](https://www.microsoft.com/en-us/research/project/symdiff-differential-program-verifier/); [Lahiri slides](https://homes.cs.washington.edu/~akcheung/pnw16/lahiri.pdf) [S]. Person, Dwyer, Elbaum, Pasareanu, "Differential Symbolic Execution", FSE 2008: summarises both versions symbolically and compares summaries to characterise behavioural differences [Mem; citation not confirmed by search].
+- Papadakis, Jia, Harman, Le Traon, "Trivial Compiler Equivalence", ICSE 2015: compiling mutants and comparing binaries discards more than 7% of all mutants as equivalent and 21% as duplicates; human checking shows TCE detects about 30% of all equivalent mutants (journal extension by Kintis et al.: about one third in C, about half in Java). — [ICSE 2015 PDF](https://orbilu.uni.lu/bitstream/10993/20289/1/ICSE15.pdf); [journal extension](https://orbilu.uni.lu/bitstream/10993/31623/1/07882714.pdf) [S]. Meaning: compiler identity is sound for "same" but misses most semantically-equal-yet-different code.
+- Gligoric, Eloussi, Marinov, "Practical Regression Test Selection with Dynamic File Dependencies" (Ekstazi), ISSTA 2015: compares .class files with "smart checksums (e.g., ignoring debug information)", which reduced selected time (e.g. Ivy 63% to 53%). — [ISSTA 2015 PDF copy](https://typeset.io/pdf/practical-regression-test-selection-with-dynamic-file-28si4g2dlc.pdf) [S]
+- Tsantalis, Ketkar, Dig, "RefactoringMiner 2.0", IEEE TSE 48(3) 2022 (online 2020): 99.6% precision, 94% recall at detecting refactorings; later oracle of 12,073 refactorings gives 0.998/0.975. — [GitHub](https://github.com/tsantalis/RefactoringMiner) [S]. It detects that a refactoring happened, not that behaviour is preserved.
+- Soares, Gheyi, Massoni, "Automated Behavioral Testing of Refactoring Engines", IEEE TSE 2013: 153,444 transformations by Eclipse JDT, NetBeans and JastAdd refactoring tools produced 57 compilation-error bugs and 63 behavioural-change bugs. — [TSE 2013 PDF](https://microsoft.com/en-us/research/uploads/prod/2020/08/tse12.pdf) [S]. Even IDE-applied "behaviour-preserving" refactorings change behaviour.
+- GumTree (Falleri et al., ASE 2014): AST edit scripts; purely syntactic, no semantic claim. [Mem]
+- MEASURED HERE [V]: Java translates unicode escapes before lexing (JLS 3.3) [Mem for the JLS reference], so `// note \u000a x = 2;` inside a method is a comment plus a real statement to javac. Commands and output (scratchpad/field/soundness/):
+  - `javac A.java && java A` on `int x = 1; // note \u000a x = 2;` then `return x;` printed `2`.
+  - java-parser (the lexer Teslon uses, java.ts:1 and tokenize at java.ts:80-92) produced the identical token stream for base and head, so `sameTokens` (java.ts:397-405) returns true.
+  - End to end on a copy of fixtures/orderdesk: one line `// rounding note \u000a quantity = quantity * 2;` added to `PricingService.lineTotal`. Truth written first: every area that prices order lines must be TEST. Teslon output: `appEffect: "none"`, "No effect on the running app: 1 file (java)", ledger reason "only comments or layout changed: the code is the same, token for token", test 0, skip 0, unclear 0, confidence "High". The certificate cannot catch it, because Δ is computed from the same tokens ("A comment-only change is not a change", CERTIFICATE doc step 2). This is a silent miss with High confidence. It is adversarial (Trojan-Source class), not a likely honest edit, but it proves the token check is not the compiler oracle it is used as.
+
+### Inferences
+- Cheap sound "no change" verdicts available to Teslon, best first: (1) normalised-bytecode identity per class/method from a real `javac` build of both commits (strip LineNumberTable/LocalVariableTable; keep annotations and constant pool; note javac inlines compile-time constants, so compare all classes, not just changed files); (2) tsc/ngc emitted-JS identity per module for front ends (proves the "types are erased" rule instead of asserting it); (3) Teslon's token identity as a fallback only after rejecting any file containing `\u` escapes, bidi/control characters, or unparsable regions. The minimal fix for the measured hole is one line: treat any changed comment containing `\u` as a code change.
+- Equivalence provers are not a launch item: no Java/Spring-grade tool, and framework semantics (JSON names, bean names, derived queries, parameter names) sit outside the program text they reason about.
+- "It's only a rename" must never be a skip reason in Spring code without a framework-name check: renaming a getter changes JSON, a class name changes the default bean name, a repository method name is a query (Teslon's own gauntlet case u4-04), a parameter name binds requests when compiled with -parameters (u4-06).
+
+### Gaps
+- Exact text of Person et al. FSE 2008 not checked. No production equivalence checker for Spring/Java found.
+
+## Q5. Static analysis across services and data (REST matching, Kafka, ORM/schema)
+
+### Takeaway
+The best published static extractors of microservice dependencies report roughly 85-98% recall on curated open-source apps, i.e. none claims soundness, and all match services by keywords, URL strings and configuration, which breaks on computed URLs, service discovery and gateways. Cross-service and data paths are therefore the area where a SKIP should most often be UNCLEAR unless the link is resolved exactly.
+
+### Cited Findings
+- Schneider and Scandariato, "Automatic Extraction of Security-Rich Dataflow Diagrams for Microservice Applications written in Java" (Code2DFD), JSS 2023 (arXiv 2304.12769): keyword search over code and configuration; overall precision 93%, recall 85% on 17 manually curated open-source Java microservice apps. — [arXiv](https://arxiv.org/abs/2304.12769v1) [S]
+- "Comparison of Static Analysis Architecture Recovery Tools for Microservice Applications" (arXiv 2412.08352, Dec 2024): Code2DFD best on F1; component precision 0.97, recall 0.98 (missed 5 of 182 components). Component-level, not call- or data-flow-level. — [arXiv](https://arxiv.org/pdf/2412.08352) [S]
+- Cerny and colleagues (Prophet, microservice reconstruction, 2020-2023) and MicroDepGraph (Rahman et al., 2019) reconstruct endpoint-to-endpoint calls from source annotations and REST client calls; they report case-study accuracy on benchmarks such as TrainTicket, not soundness. [Mem; not re-checked]
+- Maule, Emmerich, Rosenblum (ICSE 2008) schema-change impact with no false negatives on one CMS is in academic_cia_rts.md (Q3 there); not repeated.
+
+### Inferences
+- Teslon's cross-service rules (Feign, WebClient, Kafka topics, gateway) are the same keyword/annotation class as Code2DFD. Its CERTIFICATE design already records "a network call no fact records", "an API call that matches no endpoint here" and "a topic not resolved" as unknowns. The assumptions "a service reaches another service's classes only over the network" and "calls to hosts not in this repository are outside it" are unsound for shared libraries published as artifacts and for services in other repos that call this one; the latter means an API change can break an unseen consumer. Teslon should say "consumers outside this repository are not checked" on every API it marks changed, and should not SKIP an API whose contract changed even if no in-repo screen calls it.
+- Data paths: CERTIFICATE says about 43% of truth-reached impact is "content" (rows, fields, messages) and only relied on. That is the cross-service/data part, i.e. the weakest part of the literature AND the uncertified part of Teslon.
+
+### Gaps
+- Exact Prophet/MicroDepGraph accuracy figures not retrieved this session.
+
+## Q6. How analyzers are tested for soundness, and an honest judgement of Teslon's "independent checker" and "compiler oracle"
+
+### Takeaway
+The field tests analyzer soundness by comparing against an independent semantics (a concrete interpreter, a compiler, dynamic traces) on generated or mutated programs, and builds trust with the de Bruijn criterion: a small trusted checker that validates an untrusted producer's certificate against INDEPENDENT ground truth. Teslon's checker is a second algorithm over the SAME facts; teammates found that it shares file classification, Java facts (without modifiers) and setting readers with the engine, and it certified all four wrong skips the red team found. It is therefore a consistency check (it catches graph-walk bugs in the engine), not a certificate in the translation-validation sense. Its compiler oracle is a genuine independent source, but only for Java behaviour mutants on Teslon's own fixtures.
+
+### Cited Findings
+- Cuoq, Monate, Pacalet, Prevosto, Regehr, Yakobowski, Yang, "Testing Static Analyzers with Randomly Generated Programs", NFM 2012: Csmith-generated C programs run concretely and checked against Frama-C's value analysis found many soundness bugs in a mature analyzer. [Mem]
+- Klinger, Christakis, Wustholz, "Differentially Testing Soundness and Precision of Program Analyzers", ISSTA 2019: generates program variants with known-reachable assertions and compares analyzers against each other; found soundness and precision issues in mature analyzers (Crab, SeaHorn, CPAchecker, Ultimate and others). — [ISSTA 2019 page](https://conf.researchr.org/details/issta-2019/issta-2019-Technical-Papers/32/Differentially-Testing-Soundness-and-Precision-of-Program-Analyzers) [S for existence; findings Mem]
+- Metamorphic / mutation-based testing of analyzers (e.g. Taneja et al. "Testing static analyses for precision and soundness", CGO 2020, LLVM dataflow facts checked by brute-force; Zhang et al. and others for call graphs): semantics-preserving transformations must not change the verdict; semantics-changing ones must. [Mem]
+- Translation validation (Pnueli, Siegel, Singerman, TACAS 1998; Necula, PLDI 2000): instead of verifying the compiler, check each run's output against its input with an independent checker. Certifying algorithms (McConnell, Mehlhorn, Naher, Schweitzer, Computer Science Review 2011): an algorithm outputs a witness that a simple checker validates. De Bruijn criterion (Barendregt and Wiedijk): proofs checkable by a small independent kernel. [Mem]. The common requirement: the checker must re-derive from the ORIGINAL input (source/semantics), not from the producer's intermediate facts.
+- Teslon CERTIFICATE doc: "The engine walks backward from the change, so the two walks are different algorithms over the same facts"; "Facts come from Teslon's own readers: a tokenizer and parsers, not a compiler"; "Content claims are relied on, not proven". Its soundness test fed truth-reached areas to the checker and certified 0 of 255 (ShopFlow) and 0 of 493 (OrderDesk); the first run certified 61 of 255. [V, /home/user/teslon/research/CERTIFICATE-2026-11-05.md]
+- Teslon GAUNTLET doc: oracle built from javac + javap bytecode plus hand-written framework rules (Jackson, @Valid, handlers, events, Feign, Kafka, JPA callbacks); "The oracle is ours too"; blind to reflection, library callbacks, data effects; Java only; fixtures are Teslon's own. [V, /home/user/teslon/research/GAUNTLET-2026-11-05.md]
+- This session [V]: the Q4 unicode-escape case is a common-mode failure: reader, engine Δ and checker Δ all used java-parser tokens, so all agreed on a wrong "no effect".
+
+### Inferences (judgement)
+| Teslon component | What it proves | What it does not prove | Literature analogue |
+|---|---|---|---|
+| Independent checker (certify.ts) | the engine's skip is consistent with the extracted facts under a second graph walk; catches engine walk bugs | anything the readers missed or mis-classified (common inputs); content/data effects (relied on, ~43% of impact); framework semantics not in the rules | N-version programming with shared inputs; NOT translation validation (no independent semantics) |
+| Checker soundness test (truth areas fed to checker) | on two fixtures, the checker refuses every area the hand truth marks reached | areas the truth author also missed; real-world code | differential testing with a hand oracle; same authors write rules and truth |
+| Compiler oracle (javac/javap + oracle.mjs) | for injected behaviour mutants, the bytecode call graph plus framework rules reaches the same areas | front ends, config, data, reflection, library callbacks; oracle rules written by same team | Klinger-style differential testing; mutation-based soundness testing |
+| Comment mutants (bytecode-identical) | no false TEST on comment edits | does not test the reverse (a "comment" that is code: Q4) | TCE |
+
+- To make the checker a real certificate it needs at least one input the engine does not share: compiler facts (javac symbols/bytecode, tsc/ngtsc), Spring AOT bean definitions, or runtime traces. The cheapest decoupling: compute Δ in the checker from compiler output identity (normalised bytecode, emitted JS) and file classification from the build (what is on the runtime classpath/bundle), not from Teslon's readers.
+- Apply analyzer-testing practice to Teslon itself: (a) metamorphic tests: inject semantics-preserving edits (rename local, reorder imports, reformat) that must not change the verdict, and semantics-changing edits that look harmless (unicode escapes, constant inlining across classes, annotation retention, Lombok/MapStruct generated code, profile-only settings) that must; (b) random program generation is less useful for framework apps than mutation of real apps; (c) red-team PRs written by people who did not write the rules.
+
+### Gaps
+- Exact findings of Cuoq 2012 and Klinger 2019 are [Mem]; full texts blocked.
+
+## Q7. Statistical evidence and how safety standards qualify verification tools
+
+### Takeaway
+Zero observed wrong skips in n independent skip decisions bounds the true rate at about 3/n (95%). Safety standards do not accept testing alone for a tool whose error can let a fault through undetected: they require tool qualification proportional to impact, i.e. a requirements spec for the tool, verification against it, and a defined operational environment. Teslon is a "verification tool that can fail to detect an error" in every standard's taxonomy, the class that needs qualification when its output is relied on without review.
+
+### Cited Findings
+- Rule of three and sample sizes: covered in academic_cia_rts.md (Q8). Not repeated. Exact Clopper-Pearson upper bounds for 0 failures, computed here (one-sided 95%: 1-0.05^(1/n); two-sided 95% uses 0.025): to claim below 1% needs n=299 (one-sided) or 368 (two-sided); below 0.1% needs 2,995 / 3,688; below 0.01% needs 29,956 / 36,887 defect-free decisions that are independent and representative. [arithmetic, V]
+- Independence caveat: skips from the same PR, same repo or same change kind are correlated; the bound applies per stratum (stack x change kind), and hand fixtures written by the rule authors are not a random sample. [inference]
+- DO-330 / DO-178C: tool qualification levels TQL-1 to TQL-5 from software level and three criteria; Criteria 1 = output is part of airborne software and could insert an error; Criteria 2 = automates verification and its output is used to justify eliminating or reducing other verification or development processes; Criteria 3 = could fail to detect an error. Criteria 3 tools are TQL-5 at all levels; Criteria 2 tools are TQL-4 at Level A/B. A tool that justifies SKIPPING tests is Criteria 2. [Mem]
+- ISO 26262-8 clause 11: tool impact TI1/TI2 x tool error detection TD1-TD3 gives tool confidence level TCL1-TCL3; TCL2/3 require qualification methods (increased confidence from use, evaluation of the development process, validation of the tool, development per a safety standard), selected by ASIL. A tool that can fail to detect an error with low chance of the error being caught downstream is TI2/TD3 = TCL3. [Mem]
+- IEC 61508-3 (7.4.4) classes T1 (no effect on executable), T2 (verification/test tools that may fail to reveal defects), T3 (can directly introduce errors); T2/T3 need specification of behaviour, evidence of validation or proven-in-use. EN 50128 (railway) uses the same T1-T3 classes with T2 evidence requirements. [Mem]
+- NIST SATE VI Ockham criteria are an example of empirical soundness evaluation on a test suite (Q1). [S]
+
+### Inferences
+- Teslon's skip is a Criteria 2 / TI2 / T2 tool in these taxonomies. If a regulated customer uses SKIP to remove tests, they will need a tool operational requirements document (what Teslon claims, under which assumptions), a validation suite traceable to it, a known-problems list, and evidence of use; Teslon's assumption list, certificate digests and gauntlet are good raw material for this but are not yet organised as a qualification kit.
+
+## Q8. Hybrid options: does runtime evidence close the gaps?
+
+### Takeaway
+Runtime evidence (coverage per test or per manual session, production traces) captures exactly what static analysis misses (reflection, DI, proxies, callbacks, real configuration) but only for executions observed, so it is unsound in the other direction. The combination is strong when used as a cross-check: a static SKIP contradicted by a trace (the area's recorded execution touched changed code) is a detectable wrong skip.
+
+### Cited Findings
+- Coverage-based test impact analysis (Teamscale, Microsoft TIA, Ekstazi) is covered in academic_cia_rts.md (Q4/Q5). Not repeated.
+- Hybrid RTS: Zhang, "Hybrid Regression Test Selection" (HyRTS, ICSE 2018) mixes method- and file-level dynamic dependencies; Legunsen et al. (FSE 2016) found static RTS can be unsafe where reflection is used. [Mem]
+- Jelly (PLDI 2024) uses approximate execution to recover edges static analysis misses: recall 75.9% to 88.1% (Q2). [S]
+- GraalVM's tracing agent illustrates the limit: dynamic evidence is only as complete as the runs (Q3). [S]
+- SeaLights (coverage from manual and automated test sessions, "quality risk" of untested changes) and Drill4J/Drill4 (open-source Java agent collecting per-test coverage including manual sessions) are commercial/open-source implementations; their accuracy is not published independently. [Mem; vendor positioning]
+- OpenTelemetry traces give service-to-service and endpoint-to-endpoint edges actually exercised in an environment (span parent/child, http.route), which is the ground truth for Teslon's cross-service graph in that environment. [Mem]
+
+### Inferences
+- Best use for Teslon: (1) a "trace contradiction" check: run the team's existing E2E/regression suite (or staging traffic) with a Java agent on base, record method-level coverage per area (screen/API/job); for every SKIP, if the area's recorded execution touched a changed method, the skip is wrong: hold it and report a Teslon bug. This turns every customer run into soundness evidence; (2) a calibration of Teslon's static graph against observed edges (per-run recall, like Sui 2020 and Jelly); (3) not as a replacement: a skip justified only by "no test touched it" is unsafe.
+
+## The honest guarantee
+
+Today (what the evidence supports):
+"For the stacks Teslon reads, a SKIP means Teslon's own readers found no path from this PR's changed code to that area, and a second, independent graph walk over the same extracted facts agreed. It assumes the listed assumptions (printed on the report) hold and that Teslon's source readers saw every relevant fact; changes to data and messages ('content') rely on the engine alone. On Teslon's own fixtures and about 1,000 tests, no wrong skip has been observed; on real teams' code it has not yet been measured. Treat a SKIP as 'low risk, verified by rules', not as proof."
+
+After specific work (the stronger sentence):
+"A SKIP means the compiled code of both commits (javac/tsc/Angular/Vue compiler output) proves the changed definitions are unreachable from that area under every deployed profile, using framework wiring taken from the frameworks' own build output (Spring AOT bean definitions, request mappings) rather than Teslon's rules, re-checked by a checker that shares no reader with the engine; every skip lists the assumptions it used; and across N independent real pull requests in this stack, with traces of the team's test runs as a cross-check, zero skips were contradicted, which bounds the wrong-skip rate below 3/N at 95% confidence."
+Work required: compiler-backed Δ and facts (Q3/Q4), framework facts from build output (Q3), checker decoupled from the engine's readers (Q6), trace contradiction check (Q8), stratified real-PR study (Q7; e.g. 0 in 299 per stratum for <1%), and the named assumption classes split into environment hypotheses vs deliberate under-approximations (Q1).
+
+## Residual risk register
+
+| # | Way to be wrong | Likelihood (my estimate) | How to detect | Mitigation |
+|---|---|---|---|---|
+| R1 | Reader misses a fact (unmodelled framework callback, DI by name, proxy, reflection, library callback into app code) | High on unseen enterprise code (literature: about 12% of Java runtime edges missed by mature tools, Q2) | trace contradiction (Q8); per-run dangling-call rate; red-team PRs | compiler/AOT facts; separate-compilation rule for overridden library methods; skip disabled above a dangling threshold |
+| R2 | Common-mode failure: engine and checker share readers/classification | Certain to recur: red team found 4 wrong skips all certified; Q4 case reproduced | mutation families aimed at readers, not walks | checker inputs from compiler/build, not readers |
+| R3 | Source text is not what the compiler sees (unicode escapes, bidi chars, annotation processors such as Lombok/MapStruct, generated code, constant inlining) | Low in honest PRs, but silent; generated code common | normalised bytecode/emitted-JS diff vs token diff | Δ from compiler output; flag `\u` in comments now |
+| R4 | Content/data effects (rows, JSON fields, messages) not certified (~43% of truth impact) | Medium | data-level oracle; contract tests | certify field-level paths; hold when unsure |
+| R5 | Environment differs from assumptions (profile, deployed properties, feature flags, dependency versions, DB state) | Medium-high in enterprises | compare deployed config/profiles to analysed ones; Actuator /beans, /mappings snapshot | per-profile analysis; show assumptions per skip |
+| R6 | Consumers outside the repository (other repos' services, mobile apps) break on an API change | Medium for microservices | API contract diff (OpenAPI), consumer registry | never SKIP a changed contract; say "outside consumers not checked" |
+| R7 | Rule refinements that certify more (finer security/guard/store rules) introduce new holes | Medium (Android study: precision tuning increases unsoundness) | a mutation family per refinement | require a soundness test before each refinement ships |
+| R8 | Unread stack misclassified as read, or file misclassified as non-runtime (tests/docs/CI) | Low-medium | build-derived classification (on runtime classpath/bundle or not) | classify from build outputs |
+| R9 | Behaviour that is not code: timing, concurrency, flaky infra, third-party API change | Always present | out of scope; production monitoring | state out of scope in the guarantee |
+| R10 | Overconfidence from small, self-authored evidence | Present now | external, stratified real-PR study | publish per-stratum bounds |
+
+## Techniques ranked by risk removed per effort
+
+1. Flag `\u` escapes, bidi/control characters and unparsable regions in changed Java/TS comments as code changes (hours; closes the measured Q4 hole, R3).
+2. Split the printed assumptions into "environment hypotheses the customer must confirm" and "deliberate under-approximations" (soundiness disclosure), and print per skip which were used (a day; honesty, R5/R10).
+3. Compiler-backed Δ: build both commits, compare normalised bytecode per method/class and emitted JS per module; use token identity only as fallback (days; R2/R3, gives TCE-grade "nothing changed").
+4. Decouple the checker: feed it compiler facts (javac symbols/SCIP, javap call graph already in the gauntlet; tsc/ngtsc/vue language-core) and build-derived file classification instead of Teslon's readers (1-3 weeks; R1/R2/R8; makes the checker a real independent certificate for the "runs code" part).
+5. Trace contradiction check from the team's existing test runs (Java agent coverage per area on base) as continuous soundness evidence (1-2 weeks; R1/R5, detects what static misses).
+6. Spring facts from build output: `process-aot` bean definitions per deployed profile, and request mappings dumped from a test context (1-2 weeks; R1/R5 for DI, conditions, routes).
+7. Separate-compilation rule: methods overriding library-visible methods (toString, equals, Jackson getters, Spring callbacks) are reachable wherever the object reaches library code (days; R1).
+8. Red-team and metamorphic test families aimed at the readers (renames with framework meaning, Lombok/MapStruct, constant inlining, profile-only settings, generated code), written by people who did not write the rules (ongoing; R2/R7).
+9. Stratified external study: real PRs on several open-source Spring+Angular/Vue apps plus a pilot team, truth first, reporting Clopper-Pearson bounds per stratum (weeks; R10; required for any numeric claim).
+10. API-contract diff and "outside consumers not checked" banner on changed endpoints/topics (days; R6).
+11. Certify content paths at field level (weeks-months; R4).
+12. Qualification kit (tool operational requirements, validation traceability, known problems) for regulated customers (weeks; market need, not risk reduction).
+13. Semantic equivalence provers (regression verification, SymDiff): not recommended before launch; high effort, no Java/Spring tooling (Q4).
