@@ -4,7 +4,7 @@ Author: red-team agent. Goal: make Teslon give a WRONG answer and prove it with 
 Engine under test: /home/user/teslon/packages/core/dist (built, read-only). Fixtures copied to
 /tmp/claude-0/-home-user-Orbis/a99ca81c-9750-554d-8faa-4222ad38b407/scratchpad/field/redteam/
 
-Status: IN PROGRESS (file is updated after every few experiments). Experiments run so far: 24.
+Status: IN PROGRESS (file is updated after every few experiments). Experiments run so far: 50.
 
 ## 1. Summary of confirmed failures
 
@@ -20,6 +20,15 @@ Status: IN PROGRESS (file is updated after every few experiments). Experiments r
 | F09 (E19) | SILENT | High | A Java line that starts with an inline `/* ... */` comment followed by code is a comment line: the gold discount change gives appEffect none |
 | F10 (E21) | SILENT | Medium (adversarial) | `// ... \u000a code` : javac decodes the unicode newline, so the rest of the "comment" runs; Teslon says "only comments or layout changed" |
 | F11 (E56) | WRONG SKIP | Critical | An environment variable in docker-compose that overrides a Spring setting (`BILLING_TAX_RATE`, `BILLING_PROVIDER: fake`) is not followed: the billing Kafka job and the invoice screens are skipped, confidence High |
+| F12 (E73) | WRONG SKIP | Critical | A YAML placeholder (`spring.mail.host: ${orderdesk.smtp-host}`) is not a reader: changing `orderdesk.smtp-host` is "nothing in this repository reads it"; both mail-sending jobs skipped, certified, confidence High |
+| F13 (E44) | WRONG SKIP | Critical | `public final class OrderService` (a @Transactional bean) stops the Spring context from starting; Teslon lists the order screens only and skips 8 other screens and 3 jobs, certified |
+| F14 (E40) | SILENT | High | `scripts/setup-env.sh`, sourced by `docker-entrypoint.sh`, is "tooling" because its name contains the word "setup"; switching the container's Spring profile gives appEffect none |
+| F15 (E41) | SILENT | High | Anything under top-level `docs/` is documentation, even when angular.json ships `docs/help` as app assets; a served help page change gives appEffect none |
+| F16 (E42) | SILENT | High | A `.md`/`.txt` file outside a "served" folder is documentation, even when a Vue view imports it with Vite `?raw`; the home screen text change gives appEffect none |
+| F17 (E60) | SILENT | High | A mode-only change (entrypoint loses +x) is "only the file mode changed": appEffect none, although the container can no longer exec it |
+| F18 (E61) | SILENT + false claim | Medium | Sources are decoded as UTF-8; in an ISO-8859-1 Java file a change of one non-ASCII byte (`£` to `¥`) decodes to the same U+FFFD and is reported as "only comments or layout changed" |
+| F19 (E45) | FALSE EVIDENCE (caught) + false claim (not caught) | Medium | `transient` keyword on an entity field is read as `@Transient`: the citation quote "Transient" does not re-check (caught: confidence "Not proven"), and the claim "JSON field note is no longer sent or read" is wrong (Jackson still uses the getter); nothing catches that |
+| F20 (E63) | CRASH | Low | A base that is a tree (empty tree for a root commit) throws a raw git stack trace from `snapshot.js` instead of a report |
 | F07 (E06) | SILENT | Medium | `.gitattributes` (`*.sh text eol=crlf`) is tooling; it breaks the container entrypoint on a Linux image |
 
 ## 2. Soundness risk register (from reading the code)
@@ -45,6 +54,22 @@ Status: IN PROGRESS (file is updated after every few experiments). Experiments r
 - E31 custom Jackson `StdSerializer` registered through a `SimpleModule` bean: not followed, every screen held (no API named).
 - E32 `@JsonNaming(SnakeCaseStrategy)` on a DTO: said ("custom JSON"), the screens that use it listed.
 - E33 JPA `AttributeConverter` changed: not followed, every screen held.
+- E26 Angular `APP_INITIALIZER` factory in its own file: every screen listed.
+- E28 Vue base components auto-registered with `import.meta.glob` + `app.component(name, mod.default)`: every screen held.
+- E28b `app.component('BaseCard', ...)` used as `<base-card>`: every screen held.
+- E29 `<component :is>` with `defineAsyncComponent(() => import(\`../widgets/${name}.vue\`))`: every screen held.
+- E34 JPA `@EntityListeners` listener `@PrePersist` changed: every screen held.
+- E36 `HandlerInterceptor` registered in a `WebMvcConfigurer`: every screen and API listed.
+- E37 `@ControllerAdvice` + `@InitBinder`: every screen and API listed.
+- E38 `ValidationMessages.properties` / E39 `messages.properties`: not followed, every screen held.
+- E47 two classes named `Money` in different packages: the right one followed, POST /api/orders listed, no wrong skip.
+- E50 endpoint inherited from an abstract base controller: the engine would have skipped `/customers` and `/orders/new`; the independent checker refused both and held them. Held, but only thanks to the checker.
+- E51 interface default method: followed, POST /api/orders listed.
+- E52 static import of a constant: not followed, every screen held.
+- E62 empty PR: "no effect", no areas.
+- E70 router instance named `nav` (guard regex expects `*router`): router file not followed, every screen held.
+- E71 navigation guard function in `router/guards.ts`: every screen held.
+- E74 Vue `<template src="./ProductsView.html">`: every screen held.
 
 ## 5. Overfitting findings
 
