@@ -1,6 +1,6 @@
 # Field test: Teslon on stacks it cannot read (or reads only in part)
 
-Author: field tester "unread" (2026-11-15). Status: IN PROGRESS. Sections are filled as each repository finishes.
+Author: field tester "unread" (2026-11-15/16). Status: DONE within a cut budget. Run: halo, n8n (attempted), eShop, train-ticket, saleor-dashboard, plus targeted commits on microservices-demo. NOT RUN in history mode: TeaStore, mixit (Kotlin), opentelemetry-demo, microservices-demo (only static scans and one targeted commit).
 
 Promise under test: "never a wrong skip, never silent". Invariants I1 (no 'none'/High on unread runtime change),
 I2 (no skip reachable from an unread changed file), I3 (no crash/hang), I4 (every unread file named with an actionable
@@ -20,8 +20,9 @@ Last 20 non-merge commits each (coordinator cut from 40 to 20 for budget), base 
 | n8n | Node/TS back end + Vue 3 | 2 attempted | **2 / 2 timeout** (180 s, then 1,200 s) (V6) | n/a | not testable | - | K3, K8, K10, K11, K12 | - | 0 % | - |
 | eShop | .NET 10 / Blazor / Aspire | 20 | 0 | 0 strict ('none' only on a README commit), but V7 | 0 skips | V7 (no stack named) | K-none new | 0 % | 5 % (1/20, screen:* from a CSS file) | **90 % (18/20)** |
 | train-ticket | Spring (read) + AngularJS static UI + Python/Node/Go services | 20 + 2 | 0 | 0 in history; V3 synthetic | 0 (no skip ever given) | 4785de2, fa8d9ef wrong file reasons | K1, K7 (fa8d9ef) | 0 % | 65 % (13/20; tests only, never a skip) | 25 % (5/20) |
-| saleor-dashboard | React | (see below) | | V2 | | | K2/V4 | | | |
-| microservices-demo | Go/C#/Python/Node | 1 targeted | 0 | **V1** | - | V1 | K4, K6 | | | |
+| saleor-dashboard | React (detected, not read) | 20 + cc89355 | 0 | **V2** (cc89355) | 0 skips | V7 (zero areas) | K2 (V4 synthetic) | 0 % | **0 %** | **95 % (20/21)** |
+| microservices-demo | Go/C#/Python/Node | 1 targeted (e3da442) | 0 | **V1** ('none' + High) | - | V1 | K4, K6 | - | - | - |
+| TeaStore, mixit, opentelemetry-demo | Java+JSP; Kotlin WebFlux + Mustache; polyglot | **not run** (budget); static scan only | - | - | - | - | K5, K13 | - | - | - |
 
 Per-repository detail follows in section 1a.
 
@@ -47,6 +48,12 @@ skipped; the reason text would mislead (it is a Node back end, not a front-end f
 `unknown`, confidence Partial. But Teslon knows no screen, API or job in a .NET app, so the brief has **zero areas**: test 0, skip 0,
 unclear 0. The held state lives only in the ledger. Every unseen note says "no rule in this build follows other changes like this ...";
 none says "C#/.NET is not read". Only b4a4087 (README) got 'none'/High, correctly.
+
+**saleor-dashboard.** No crash (about 55 s per commit on 6,500 files). Every commit is `unknown`/Partial with the note "the React front end
+(2,2xx files) is not read", and the brief has zero areas in 20 of 21 runs: React screens are neither listed nor held as areas, so the
+counts read 0/0/0. cf4d136 (release: version bump in package.json + changeset .md files) is `appEffect: 'yes'` with zero areas. The one
+real wrong answer is cc89355 (V2). Type-only `.tsx` edits marked no-runtime-effect (dda3c0f `Promise<void>` -> `Promise<boolean>` in a props
+type, d2d574e types.ts) were checked by hand and are correct.
 
 **train-ticket.** No crash, no skip in any commit (the AngularJS UI is detected as unread, so no screen is ever skipped), 13/20 with
 concrete Java test areas. Wrong file-level reasons inside bigger commits: 4785de2 calls `ts-avatar-service/requirements.txt`
@@ -114,6 +121,16 @@ raw output in `field/unread/out/<repo>/<sha>.json`. Truth written first in `fiel
 - Fix: read blobs through one `git cat-file --batch` process (or `git archive` once per side), read only files reachable from the change
   plus the route/manifest files, and add a time budget that ends with "held: did not finish reading" rather than nothing.
 
+### V7 (I1/I2 in spirit, I4) eShop and saleor-dashboard: "held" exists only in the ledger; the brief shows zero areas
+- eShop 18/20 and saleor 20/21 commits: `appEffect: 'unknown'`, confidence Partial, but brief `test 0, skip 0, unclear 0` and `areas: []`.
+  Example eShop 5624ad5 (Aspire 13.1 and Microsoft.Extensions 10.1 bump in `Directory.Packages.props`, `eShop.AppHost.csproj`): ledger
+  `not-modelled` "nothing followed these lines"; unseen "no rule in this build follows other changes like this to where it lands".
+- Truth: every one of these changes runtime C#/React code. Nothing is wrongly skipped (no skip exists), but a test lead reading the brief
+  sees "0 to test, 0 unclear". The only signal is the Partial title and the ledger. For .NET, Teslon does not even say ".NET/C# is not read":
+  `ui.unread` (impact.ts:719) names unread front ends only, and back ends in Node, .NET, Go, Python, Kotlin are never named as a stack.
+- Fix: when appEffect is not 'none' and no area is known, emit one unclear area "the whole app (stack X is not read)" so the counts read
+  0 / 0 / 1, and name the unread stack per changed file in the ledger reason (".cs: C# is not read by this build").
+
 ### V5 (I3) halo 3ec858d: crash (uncaught SyntaxError) on a Dockerfile-only commit
 - Teslon: process exits 1: `SyntaxError: Invalid regular expression: /(^|[^\w$.])"["(?![\w$])|\b(this|PHYSICAL_KEY_CODES)\."["(?![\w$])/:
   Unmatched ')'` at `dist/engine/certify.js:941` (source certify.ts:666).
@@ -150,19 +167,58 @@ Real commits that hit K4 alone (requirements.txt is the only changed file): micr
 | K12 | `packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/changelog.json` (n8n) | docs | node output schema shipped with the node | line 13: `CHANGELOG` |
 | K13 | `utilities/tools.descartes.teastore.dockerbase/ssl/generate_cert.sh` (TeaStore) | tooling (word "generate") | makes the certificate the image imports (Dockerfile:43 says re-run it and rebuild) | line 30 |
 
-K8 confirmed on the engine with a synthetic commit on halo License.java (see V6 below when run).
+K8/K9 were not confirmed on the engine: the halo synthetic commit (`synth/halo` 4a4b141, `License.url` -> `href`, read by
+`Detail.vue:301 license.url`) was prepared but not run, because every halo run crashes (V5) and the budget ended. By kinds.ts:13 + 45 the
+ledger would call it documentation.
 
 ## 4. Deep I2 checks (n8n, halo)
 
-(pending)
+Not testable. Truth was written for 4+ commits each (`field/unread/truth/halo_deep.md`, `truth/n8n_deep.md`), but halo crashes on every
+commit (V5: e6da398, 1c678e7, d7bf329, 8f40bb6 all `rc=1`, same SyntaxError) and n8n does not finish one commit in 20 minutes (V6). So the
+dangerous case (Vue front end read, back end unread) has no measured answer on either repo. Code reading says the n8n back end would be held
+(unreached `.ts` stays not-modelled), and that halo's generated API-client calls are invisible to the Vue reader (neither call nor opaque),
+which becomes a wrong-skip path as soon as every changed line of a PR counts as followed (for example a Dockerfile-only or lockfile+manifest
+PR, whose lines are marked followed at where.ts deployment and lockfile sections).
 
 ## 5. Usefulness: the price of an unread stack
 
-(pending)
+| Repo | Commits with an answer | Some precise answer (test or skip) | Zero areas (text only) | 'none' |
+|---|---|---|---|---|
+| halo | 0 / 21 (crash) | 0 % | - | - |
+| n8n | 0 / 2 (timeout) | 0 % | - | - |
+| eShop | 20 / 20 | 5 % (one `screen:*` from a CSS file) | 90 % | 1 (README, correct) |
+| saleor-dashboard | 21 / 21 | 0 % | 95 % | 1 (cc89355, wrong) |
+| train-ticket | 20 / 20 | 65 % (Java read; tests only, 0 skips in 20) | 25 % | 3 (README, LICENSE-type and `hack/clean-image.sh`, correct) |
+
+Honest price: on a stack Teslon does not read, the useful output is the ledger (which files it did not follow), not the brief. No skip was
+produced on any unread stack in history, which is the safe direction; the wrong answers all came from the opposite side, files declared
+inert by name or by line shape (V1-V4).
 
 ## 6. What Teslon must do before it meets a stack it cannot read
 
-(pending)
+1. **Never crash, never run unbounded.** Escape every name put into a RegExp (certify.ts:666; V5) and catch any engine exception into
+   "every area held, reason: internal error at file:line". Read blobs through one `git cat-file --batch` process and only the files the
+   change can reach; add a time budget that degrades to "held" (V6). Add halo and n8n to the history-scan gate.
+2. **Make 'docs', 'ci', 'tooling' an allowlist, not a guess from extension, basename or folder.** Today `*.txt` is docs (requirements.txt,
+   CMakeLists.txt: V1, V3, K4, K5); any basename `license|notice|security|changelog|readme.*` is docs even when it is `license.ts`,
+   `License.java`, `Notice.vue` (K8-K10, K12); any folder `charts/`, `deploy/`, `docker/` is deployment even for Vue components (K11);
+   everything under `.github/` is CI even when it builds and deploys the app or holds the live cluster's Kubernetes and Terraform (V4, K6).
+   Rule: a file is inert only if its name is in a short known list (README*, CHANGELOG*, LICENSE with no code extension, `docs/**/*.md`,
+   `.github/ISSUE_TEMPLATE`, lint configs) and it is not referenced by a Dockerfile, a build file, a deploy workflow or an import.
+3. **Imports and directives are code.** Stop dropping lines that start with `import`, `package`, `#`, `//` (impact.ts:569, where.ts:54).
+   An import added, removed or re-pointed is a change (V2 cc89355, train-ticket fa8d9ef, n8n a44a347a). `#[...]`, `#define`, `//go:embed`
+   are code too. Only a reader that proves a line inert for its language may mark it so.
+4. **Recognise dependency manifests of every ecosystem** (requirements*.txt, pyproject, go.mod/sum, Cargo, Gemfile, composer, *.csproj,
+   Directory.Packages.props, gradle catalogs) as `dependencies` with no rule, i.e. held, and say which service they feed.
+5. **Name the unread stack, per file and in the brief.** Detect unread back ends (Node, .NET, Go, Python, Kotlin, PHP, Ruby, Rust) as well
+   as front ends, put "C# is not read by this build" in the ledger reason, and when no area is known, add one unclear area for the whole app
+   so the counts never read 0/0/0 on a runtime change (V7).
+6. **Confidence 'High' requires that every changed file was classified by a rule that knows its ecosystem**; 'none' from a name guess must
+   cap at Partial (V1 got High).
+7. **Before any skip on a Vue/Angular app, model the generated API-client pattern** (`xxxApiClient.group.op()`, OpenAPI generators) or at
+   least count it as opaque, so a back-end change the engine cannot follow cannot leave a screen as "calls no API".
+8. **Prove it on this list before launch:** halo, n8n, eShop, saleor-dashboard, train-ticket, microservices-demo, opentelemetry-demo, with
+   the commits named here (e3da442, cc89355, fa8d9ef, a44a347a, 3ec858d) as regression cases.
 
 ## Method and raw data
 
