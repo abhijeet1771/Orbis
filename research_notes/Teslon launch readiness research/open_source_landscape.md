@@ -1,6 +1,6 @@
 # Open-source landscape for change impact analysis (Teslon launch readiness, 2026-11-16)
 
-STATUS: in progress. Method note: the GitHub REST API and github.com HTML are blocked from this session's proxy (HTTP 403, checked 2026-11-16), so star counts could NOT be read from the API. Last-commit dates and licence files below were read directly with `git clone --depth 1 --filter=blob:none` of each repo on 2026-11-16 (script and raw output: /tmp/claude-0/-home-user-Orbis/a99ca81c-9750-554d-8faa-4222ad38b407/scratchpad/field/oss/meta.tsv). Star counts are given only where a web source showed them, else "n/v" (not verified).
+STATUS: complete (2026-11-16). Method note: the GitHub REST API and github.com HTML are blocked from this session's proxy (HTTP 403, checked 2026-11-16), so star counts could NOT be read from the API. Last-commit dates and licence files below were read directly with `git clone --depth 1 --filter=blob:none` of each repo on 2026-11-16 (script and raw output: /tmp/claude-0/-home-user-Orbis/a99ca81c-9750-554d-8faa-4222ad38b407/scratchpad/field/oss/meta.tsv). Star counts are given only where a web source showed them, else "n/v" (not verified).
 
 (Sections are appended category by category.)
 
@@ -107,3 +107,189 @@ The Spring Tools language server now has a headless, delta-cached **Spring metam
 ### Gaps
 - I did not run the Spring Tools server headless outside an editor; whether its index can be driven by a plain CLI without an LSP client was not tested.
 - Spring AOT output (`target/spring-aot/`) as a fact source was not investigated in this session.
+
+## Q5. Front-end fact sources (React, Next.js, Angular, Vue, Node/NestJS)
+
+### Takeaway
+Teslon already depends on the TypeScript compiler (`typescript ^5.5.0`), `@angular/compiler` and `@vue/compiler-dom`. React, Next.js, Express and NestJS readers can be built on the TypeScript **TypeChecker** it already ships, with no new heavy dependency; Next.js and React Router publish their own route models that serve as independent oracles.
+
+### Cited Findings
+| Project | Gives | Last commit | Licence | Verdict |
+|---|---|---|---|---|
+| TypeScript compiler API (already a Teslon dependency, packages/core/package.json) | Program, TypeChecker, symbol resolution across files, JSX | n/a | Apache-2.0 [Mem] | **Adopt more deeply** (TypeChecker for React/Node readers) |
+| [ts-morph](https://github.com/dsherret/ts-morph) | Ergonomic wrapper over the TS compiler API | 2026-08-21 | MIT | Optional convenience; not needed |
+| [vuejs/language-tools](https://github.com/vuejs/language-tools) (Volar, vue-tsc) | Type-checked SFC templates via virtual TS code | 2026-11-12 | MIT | **Borrow**: vue-tsc's generated TS gives typed template-to-script edges; oracle for Teslon's Vue template reader |
+| [angular/angular](https://github.com/angular/angular) compiler-cli / language service | Template type-check (`ngtsc`), component metadata | 2026-11-13 | MIT | Teslon uses `@angular/compiler`; the type-check program is the next step [Mem] |
+| Next.js build manifests | `pages-manifest.json`, `app-paths-manifest.json`, `app-path-routes-manifest.json`, `routes-manifest.json` (constants in [next.js](https://github.com/vercel/next.js) `packages/next/src/shared/lib/constants.ts` lines 87-99) | 2026-11-04 (clone) | MIT | **Oracle** for the screen inventory (needs a build; lab only) |
+| React Router v7 route config (`routes.ts`) and data routers | Declarative route tree [Mem] | n/v | MIT [Mem] | Read statically; react-router-endpoint-diff as oracle |
+| [dependency-cruiser](https://github.com/sverweij/dependency-cruiser) | Resolved import graph (TS paths, webpack aliases), JSON output | 2026-11-12 | MIT | **Oracle** for import closure (independent resolver) |
+| [madge](https://github.com/pahen/madge) | Import graph | 2024-08-05 (stale) | MIT | Ignore |
+| [knip](https://github.com/webpro-nl/knip) | Entry files and unused files/exports from framework plugins (100+ plugins) [Mem] | 2026-11-13 | ISC | **Borrow the idea**: its plugin list of framework entry points is a ready catalogue of "which config file makes which file live" (answers name-based classification) |
+| [skott](https://github.com/antoine-coulon/skott) | Import graph + unused files | 2026-09-11 | MIT (package.json) | Ignore |
+| [nestjs/nest](https://github.com/nestjs/nest) | Decorators `@Controller`, `@Get` etc. define endpoints | 2026-11-13 | MIT | Read via TS compiler decorators |
+
+### Inferences
+- React + Next + NestJS + Express readers on the TypeChecker remove "no React/Node readers" for the largest market share at the lowest cost; the same Program also provides compiler-resolved symbol identities, replacing token comparison for TS.
+- knip's plugin table is the closest existing answer to "which files are live because a config names them", the TS-side cure for folder-name classification.
+
+### Gaps
+- React Router CLI route export (`react-router routes --json`) and Angular `ngtsc` programmatic use were not re-verified this session [Mem].
+
+## Q6. Multi-language code intelligence: fastest compiler-grade path for React, Kotlin, Node/NestJS, Python, .NET
+
+### Takeaway
+SCIP is the one format with maintained, compiler-backed indexers for every target stack: scip-java (Java, Scala, Kotlin), scip-typescript (TS/JS), scip-python (pyright-based), scip-dotnet (Roslyn, C#/VB). One SCIP reader in Teslon gives definitions and references for all of them, run at base and head. Framework semantics (routes, beans, DI) stay Teslon's job.
+
+### Cited Findings
+| Infra | Coverage (from README) | Last commit | Licence | Verdict |
+|---|---|---|---|---|
+| [SCIP](https://github.com/sourcegraph/scip) (now `scip-code/scip`) | Indexers listed: scip-java (Java, Scala, Kotlin), scip-typescript (TS, JS), rust-analyzer, scip-clang, scip-ruby, scip-python, scip-dotnet (C#, VB), scip-dart, scip-php | 2026-11-10 | Apache-2.0 | **Adopt** the format + reader |
+| [scip-typescript](https://github.com/sourcegraph/scip-typescript) | TS/JS via the TS compiler | 2026-11-12 | Apache-2.0 | Adopt (or use the TS API directly) |
+| [scip-python](https://github.com/sourcegraph/scip-python) | Python via pyright | 2026-11-11 | MIT | Adopt for Python |
+| [scip-dotnet](https://github.com/sourcegraph/scip-dotnet) | C#/VB via Roslyn | 2026-11-11 | Apache-2.0 | Adopt for .NET (later) |
+| [Kythe](https://github.com/kythe/kythe) | Cross-language graph; build-integrated | 2026-09-18 | Apache-2.0 | Ignore (heavy, Bazel-centric) |
+| [Glean](https://github.com/facebookincubator/Glean) | Fact DB with incremental derivation | 2026-11-15 | BSD | Borrow the idea (facts keyed by unit, incremental) |
+| [stack-graphs](https://github.com/github/stack-graphs) | Incremental name resolution without a build | 2025-09-09 (no commits for 14 months) | Apache-2.0 / MIT | Ignore (inactive) |
+| [tree-sitter](https://github.com/tree-sitter/tree-sitter) / [ast-grep](https://github.com/ast-grep/ast-grep) | Fast incremental syntax trees / structural rules, many languages | 2026-11-15 / 2026-11-15 | MIT / MIT | Use for **detection and fallback** only (syntax, not types) |
+| [Kotlin LSP](https://github.com/Kotlin/kotlin-lsp) | Official JetBrains LSP based on IntelliJ's Kotlin plugin; Gradle and Maven support; "currently in the Alpha state"; repo is a read-only mirror | 2026-11-13 | Apache-2.0 | Oracle candidate for Kotlin; not a pre-launch dependency (alpha) |
+| [fwcd/kotlin-language-server](https://github.com/fwcd/kotlin-language-server) | Community Kotlin LSP | 2025-06-02 | MIT | Ignore (superseded) |
+| [multilspy](https://github.com/microsoft/multilspy) | Python client that drives many language servers (jdtls, pyright, gopls, etc.) | 2026-10-13 | MIT | Borrow the idea (if LSPs are used as oracles) |
+| [Serena](https://github.com/oraios/serena) (SolidLSP) | LSP-driven symbol tools for agents | 2026-11-15 | Per component: SolidLSP MIT, rest per LICENSES (LICENSE file) | Ignore |
+| [pyright](https://github.com/microsoft/pyright), [Roslyn](https://github.com/dotnet/roslyn), [gopls](https://github.com/golang/tools) | Compiler-grade analysers | 2026-11-13 / 2026-11-16 / 2026-11-13 | MIT / MIT / BSD-3 | Used through SCIP (Python, .NET); gopls/`go/packages` directly for Go |
+
+### Inferences
+- Fastest compiler-grade path per stack: React/Node/NestJS -> TS TypeChecker already in Teslon (weeks); Kotlin -> scip-java's Kotlin support (needs a compiling Gradle/Maven build); Python -> scip-python; .NET -> scip-dotnet; Go -> `golang.org/x/tools/go/packages` + `callgraph` [Mem].
+- SCIP indexes are per-document, so they also enable incremental work (re-index only changed documents for TS; Java needs the build) [inference].
+
+### Gaps
+- Indexing time of scip-java/scip-typescript on an n8n-sized repo was not measured.
+
+## Q7. Contract and schema diff tools
+
+### Cited Findings
+| Tool | Last commit | Licence | Verdict |
+|---|---|---|---|
+| [oasdiff](https://github.com/oasdiff/oasdiff) (OpenAPI breaking-change checks) | 2026-11-14 | Apache-2.0 | **Adopt** as API-delta oracle + vocabulary |
+| [openapi-diff](https://github.com/OpenAPITools/openapi-diff) | 2026-11-14 | Apache-2.0 | Second OpenAPI oracle |
+| [Optic](https://github.com/opticdev/optic) | 2025-08-10 (quiet) | MIT | Ignore |
+| [pact-jvm](https://github.com/pact-foundation/pact-jvm) | 2026-11-04 | Apache-2.0 | Read pacts as consumer facts when present |
+| [Spring Cloud Contract](https://github.com/spring-cloud/spring-cloud-contract) | 2026-07-06 | Apache-2.0 | Read contracts as consumer facts when present |
+| [buf](https://github.com/bufbuild/buf) `breaking` | 2026-11-13 | Apache-2.0 | Adopt when gRPC/protobuf is read |
+| [graphql-inspector](https://github.com/graphql-hive/graphql-inspector) | 2026-11-13 | MIT | Adopt when GraphQL is read |
+| [japicmp](https://github.com/siom79/japicmp) / [revapi](https://github.com/revapi/revapi) | 2026-11-04 / 2025-11-08 | Apache-2.0 / Apache-2.0 | Evidence for dependency bumps (API changed => TEST); a clean report can never prove SKIP (behaviour changes without API change, e.g. the chaos-monkey 405 case in PRIOR-ART) |
+| [Atlas](https://github.com/ariga/atlas) | 2026-11-15 | Apache-2.0 (repo; some Atlas features are commercial [Mem]) | Oracle for destructive schema changes |
+| [Squawk](https://github.com/sbdchd/squawk) | 2026-11-16 | Apache-2.0 / MIT | Oracle for Postgres locking migrations |
+| [pgroll](https://github.com/xataio/pgroll) | 2026-11-02 | Apache-2.0 | Ignore |
+| [Liquibase](https://github.com/liquibase/liquibase) `diff` | 2026-11-13 | **FSL-1.1-ALv2** (Functional Source License, LICENSE.txt): not open source until the Apache change date; competing-use restriction | **Flag**: do not embed Liquibase; Teslon's own Liquibase XML reader is the right call |
+
+## Q8. Open test-impact tools as runtime oracles
+
+### Takeaway
+Yes: per-test or per-request coverage recorded while running the app's tests is the only independent *runtime* oracle for Teslon's SKIP claims. A SKIP is falsified when any recorded test or request that touches changed code maps to a skipped area.
+
+### Cited Findings
+| Tool | Kind | Last commit | Licence | Verdict |
+|---|---|---|---|---|
+| [teamscale-jacoco-agent](https://github.com/cqse/teamscale-jacoco-agent) ("Teamscale Java Profiler") | JVM agent on JaCoCo, testwise coverage | 2026-11-15 | Apache-2.0 | **Oracle (adopt in the lab)**: per-test / per-request Java coverage |
+| [Ekstazi](https://github.com/gliga/ekstazi) | Dynamic class-level RTS ([ISSTA 2015](https://dl.acm.org/doi/10.1145/2771783.2771784)) | 2026-01-30 | Apache-2.0 | Oracle for Java unit level |
+| [STARTS](https://github.com/TestingResearchIllinois/starts) | Static class-firewall RTS | 2024-06-30 | MIT-style | Independent static oracle |
+| [Drill4J](https://github.com/Drill4J/drill4j) | Java + JS agents, test-to-code mapping | 2024-09-02 (slowing) | Apache-2.0 | Watch only |
+| [pytest-testmon](https://github.com/tarpas/pytest-testmon) | Python per-test coverage selection | 2026-11-02 | MIT | Oracle for Python once read |
+| [Skippy](https://github.com/Skippy-io/skippy) | JVM TIA (JUnit 5) | 2025-09-17 | Apache-2.0 | Ignore |
+| [rtscheck](https://github.com/EngineeringSoftware/rtscheck) | Differential testing of RTS tools | 2022-11-26 | MIT | **Borrow the idea**: compare tools against each other to find unsafe selections |
+| Vitest `--since-last-run` | Runtime per-test loaded-files record | 2026-11-13 | MIT | Oracle for TS (see Q2) |
+| Microsoft TIA (Azure DevOps) | Closed source [Mem] | - | - | Ignore |
+
+## Q9. Diff and refactoring tooling
+
+| Tool | Last commit | Licence | Verdict |
+|---|---|---|---|
+| [GumTree](https://github.com/GumTreeDiff/gumtree) | 2026-11-13 | **LGPL-3.0** (run as separate process) | **Borrow/adopt as process**: AST edit scripts so moves/renames/format-only changes are not token deltas |
+| [RefactoringMiner](https://github.com/tsantalis/RefactoringMiner) | 2026-11-13 | MIT | **Adopt** (Java, also Python/Kotlin support [Mem]): detects pure refactorings => evidence for "behaviour-preserving" (still needs a checker before SKIP) |
+| [difftastic](https://github.com/Wilfred/difftastic) | 2026-11-15 | MIT | Ignore (display tool) |
+
+## Q10. Microservice graph extractors (all already cloned earlier)
+
+| Tool | Last commit | Licence | Verdict |
+|---|---|---|---|
+| [cloudhubs/prophet](https://github.com/cloudhubs/prophet), [cloudhubs/rad](https://github.com/cloudhubs/rad) | 2023-08-31 / 2021-09-02 | Apache-2.0 / none at root | Ignore (stale research prototypes); RAD's REST-call matching is a reference only |
+| [clowee/MicroDepGraph](https://github.com/clowee/MicroDepGraph) | 2021-11-24 | none at root | Ignore |
+| [tuhh-softsec/code2DFD](https://github.com/tuhh-softsec/code2DFD) | 2024-10-27 | Apache-2.0 | Oracle: its labelled dataflow diagrams of open microservice apps are external truth for service edges |
+| [bakdata/streams-explorer](https://github.com/bakdata/streams-explorer) | 2026-11-11 | MIT | Borrow idea for Kafka topology display |
+| [ExpediaGroup/jarviz](https://github.com/ExpediaGroup/jarviz) | 2022-05-16 | Apache-2.0 | Ignore (stale) |
+| [ContextMapper/context-map-discovery](https://github.com/ContextMapper/context-map-discovery) | 2024-08-29 | Apache-2.0 | Ignore |
+
+## Q11. Benchmarks and corpora with real changes and known bugs
+
+| Corpus | Content | Last commit | Licence | UI / screen-level truth? |
+|---|---|---|---|---|
+| [Defects4J](https://github.com/rjust/defects4j) | 854 active bugs from 17 Java libraries (jfreechart, commons-*, gson, jackson, jsoup, mockito, joda-time, closure-compiler) with triggering tests (README table) | 2026-04-07 | MIT-style | **No** (libraries). Truth for method -> failing test |
+| [GitBug-Java](https://github.com/gitbugactions/gitbug-java) | Reproducible recent Java bugs (MSR 2024) | 2025-08-19 | MIT | No (mostly libraries) [Mem] |
+| [BugsJS](https://github.com/BugsJS/bug-dataset) | JS bugs incl. Express, server-side projects [Mem] | 2019-11-27 | MIT | API-level only |
+| [Bears](https://github.com/bears-bugs/bears-benchmark) | Java Maven CI bugs | 2024-03-04 | GPL-3.0 (data use fine; do not embed code) | No |
+| [BugSwarm](https://github.com/BugSwarm/bugswarm) | Fail/pass CI pairs, Java and Python | 2026-03-05 | BSD | No |
+| [RegMiner](https://github.com/SongXueZhi/RegMiner) | Mined regression bugs (Java) | 2024-11-16 | Apache-2.0 | No; but regressions = "change that broke X" truth |
+| [SWE-bench](https://github.com/SWE-bench/SWE-bench) Multimodal | 617 tasks from 17 JS libraries for web UI, diagramming, charts, maps; each has at least one image ([arXiv 2410.03859](https://arxiv.org/html/2410.03859)) | 2026-09-02 | MIT | **Partly**: visual, user-facing behaviour with images (libraries, not apps) |
+| [SWE-PolyBench](https://github.com/amazon-science/SWE-PolyBench) | 2,110 tasks, 21 repos: Java 165, JS 1,017, TS 729, Python 199 ([arXiv 2504.08703](https://arxiv.org/html/2504.08703v1)) | 2026-06-16 | MIT | Some front-end repos [Mem] |
+| [Multi-SWE-bench](https://github.com/multi-swe-bench/multi-swe-bench) | 7 languages incl. Java and TypeScript; mini (400) and flash (300) subsets (README) | 2025-12-18 | Apache-2.0 | Some TS front ends [Mem] |
+| [train-ticket](https://github.com/FudanSELab/train-ticket) + fault-replicate | 41 Spring microservices with UI; 22 replicated industrial faults [Mem] | 2022-11-01 / 2018-12-10 | Apache-2.0 | **Yes** (UI + services), but old Spring |
+
+Inference: only train-ticket's faults and SWE-bench Multimodal give user-visible truth; for screen-level truth on modern stacks Teslon must make its own (mutants + Playwright on real apps: spring-petclinic, jhipster-sample-app, saleor-dashboard, realworld, eShop, opentelemetry-demo).
+
+## Q12. Synthesis: catalogue verdicts, Top 10 adoptions, oracles
+
+### Catalogue verdict summary (by category)
+| Category | Adopt | Borrow the idea | Oracle | Ignore / licence-blocked |
+|---|---|---|---|---|
+| Peers | - | inga, naeemdadi/impact-analysis, Easlkad/impact, code-review-graph | next-affected, react-router-endpoint-diff, inga | optave/codegraph, code-impact-mcp, arbor; **GitNexus (PolyForm NC), depwire (BSL)** |
+| Monorepo/test flags | - | Nx inputs + `--explain`, bazel-diff hashing, TurboSnap bail list | Vitest `--since-last-run`, Jest `--findRelatedTests` | Turborepo, Pants, Rush, moon |
+| Java frameworks | scip-java | Doop/JackEE rules, OpenRewrite (Java modules) | Joern, ArchUnit, CodeQL (OSS benchmark apps only) | SootUp, WALA, OPAL, Tai-e (pre-launch); **jQAssistant Spring (GPL, stale)**; **OpenRewrite JS/Python/C#/Go (MSAL)** |
+| Spring facts | - | - | Spring Tools metamodel index, Actuator `/mappings` `/beans`, smart-doc | - |
+| Front end | TS TypeChecker (existing dep), vue-tsc | knip plugin catalogue | dependency-cruiser, Next.js manifests | madge, skott |
+| Code intelligence | SCIP format; scip-typescript, scip-python, scip-dotnet (later) | Glean | Kotlin LSP (alpha), Joern | Kythe, stack-graphs (inactive) |
+| Contracts/schema | oasdiff | japicmp/revapi (TEST evidence only) | openapi-diff, Squawk, Atlas, buf, graphql-inspector | **Liquibase diff (FSL)**, Optic, pgroll |
+| Test impact | - | rtscheck differential method | teamscale-jacoco-agent, Ekstazi, STARTS, pytest-testmon | Skippy, Drill4J (watch) |
+| Diff | RefactoringMiner (MIT) | GumTree (LGPL, as process) | - | difftastic |
+| Microservices | - | streams-explorer | Code2DFD dataset | prophet, RAD, MicroDepGraph, jarviz, context-map-discovery |
+
+### Top 10 things to adopt before launch (ranked by how much of the five known weaknesses each removes)
+Weaknesses: W1 file classification by name/folder; W2 token comparison instead of compiler output; W3 checker shares the engine's readers; W4 no React/Kotlin/Node readers; W5 full re-parse every run (n8n > 20 min).
+
+| # | Adopt | Removes | Effort (estimate, 1 engineer) | Risk removed / licence |
+|---|---|---|---|---|
+| 1 | **Blob-hash incremental fact cache**: key every file's facts by its git blob SHA (free from `git ls-tree`), reuse for unchanged blobs, parse only changed blobs plus their reverse-dependency closure; persist across runs in the Action cache (ideas: bazel-diff, Nx input hashing, Spring Tools `IndexCacheOnDiscDeltaBased`, Glean) | W5 (fully), helps all | 1-2 weeks | Removes "no answer on large repos" (n8n). Own code, no licence issue |
+| 2 | **TypeScript TypeChecker-based readers for React, Next.js, React Router, Express, NestJS** on the already-shipped `typescript` dependency; symbol identity from the checker, not tokens | W4 (React, Node), W2 for TS | 4-6 weeks | Removes the biggest market gap; Apache-2.0 |
+| 3 | **scip-java** (Java + Kotlin via javac/kotlinc plugin) as the compiler fact source for symbols and references at base and head; if the build fails, hold as UNCLEAR | W2 (Java), W4 (Kotlin), enables #4 | 4-6 weeks | Removes name-based call edges; Apache-2.0; needs JDK + build cache on runner |
+| 4 | **Independent checker on different readers**: certify skips from SCIP/TypeChecker facts (and the Spring Tools index for Spring facts) instead of the engine's own CST readers | W3 | 2-4 weeks after #2/#3 | Removes common-mode failure (same bug in engine and checker). Spring Tools is EPL-1.0: run as separate process |
+| 5 | **Build-fact file classification**: "who reads this file" from package.json `files/main/exports/bin`, Maven resources, Dockerfile `COPY`, Vite/Angular config, knip's framework-plugin entry list; unknown => UNCLEAR, never "docs" by extension | W1 | 2 weeks | Removes the n8n `SKILL.md` and saleor deploy-workflow class of wrong "nothing to test" |
+| 6 | **oasdiff** at both commits on a generated spec (springdoc/smart-doc at build, or Teslon's own endpoint model exported as OpenAPI) | W2 for API shape, W3 | 1-2 weeks | Independent API-delta oracle with 250+ checks; Apache-2.0 |
+| 7 | **RefactoringMiner** (MIT) + **GumTree** (LGPL, separate process) to classify edits as rename/move/extract/format-only | W2 | 2 weeks | Fewer false TEST on refactors; refactor detection is *evidence*, still checked before any SKIP |
+| 8 | **scip-python** (MIT) for FastAPI/Django/Flask endpoints | W4 (Python) | 3-4 weeks | Removes the train-ticket/microservices-demo `requirements.txt` wrong-answer class (field_unread_stacks V1, V3) once read |
+| 9 | **Gradle model** via scip-java's Gradle integration / Gradle tooling API [Mem] (OpenRewrite `rewrite-gradle` is Apache-2.0) | W1/W4 (Gradle is detected, held today) | 2-3 weeks | Kotlin/Android/most new Spring projects use Gradle |
+| 10 | **japicmp** (Apache-2.0) on dependency bumps: binary API diff of old vs new jar, mapped to call sites | W2 for dependency bumps | 1 week | Turns "bump = everything unclear" into "these call sites use changed API" (TEST evidence only; never a SKIP proof) |
+
+### Independent oracles and external truth sets Teslon should test against
+**Runtime oracles (falsify SKIP):**
+1. Per-request Java coverage with [teamscale-jacoco-agent](https://github.com/cqse/teamscale-jacoco-agent) (Apache-2.0) while Playwright drives every screen at head: any changed line covered by a request from a skipped screen = wrong skip.
+2. Browser JS coverage per page (Playwright V8 coverage [Mem]) for Angular/Vue/React screens.
+3. Spring Actuator `/mappings` and `/beans` at both commits: endpoint and bean inventories vs Teslon's.
+4. Vitest `--since-last-run` dependency records and Ekstazi (Apache-2.0) for unit-level dependencies.
+**Static differential oracles (must agree or explain):**
+5. Spring Tools metamodel index (beans, injection points, request mappings).
+6. dependency-cruiser (import closure), next-affected (Next.js pages), react-router-endpoint-diff (routes), Next.js build manifests.
+7. oasdiff / openapi-diff (API deltas); Squawk / Atlas (schema deltas); buf / graphql-inspector when those stacks are read.
+8. Joern (multi-language call edges) and, on open-source benchmark apps only, CodeQL (licence forbids private code).
+9. inga (Java/Kotlin/TS entry points) as a peer cross-check; disagreements are triage leads, not truth.
+**External truth sets:**
+10. Defects4J (854 bugs) and GitBug-Java: change -> failing test truth for Java call-graph reachability (library level, no UI).
+11. RegMiner regressions and BugSwarm fail/pass pairs: "this change broke that" truth.
+12. SWE-PolyBench (Java 165, JS 1,017, TS 729, Python 199) and Multi-SWE-bench (7 languages): real fix PRs with tests for the new React/Node/Python readers.
+13. SWE-bench Multimodal (617 visual JS tasks): the only large set with user-visible (image) truth.
+14. train-ticket + fault-replicate: the only microservice + UI fault set (old, but screen-level truth is possible).
+15. Code2DFD's labelled microservice dataflow models: truth for service-to-service edges.
+Method borrowed from [rtscheck](https://github.com/EngineeringSoftware/rtscheck): run Teslon against several of these tools on the same commits and treat every disagreement as a defect candidate.
+
+### Gaps
+- Star counts were not verifiable (GitHub API and github.com blocked from this session); all "last commit" dates are verified by git on 2026-11-16.
+- Items tagged [Mem] come from the researcher's prior knowledge and were not re-checked this session.
+- No adopted tool was run on Teslon's fixtures; effort estimates are judgement, not measurement.
